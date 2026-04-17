@@ -377,6 +377,9 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 							}
 							schemaRef = "#/components/schemas/" + schemaRef
 						}
+						schemaRef = strings.ReplaceAll(schemaRef, "response.", "")
+						schemaRef = strings.ReplaceAll(schemaRef, "models.", "")
+						schemaRef = strings.ReplaceAll(schemaRef, "util.", "")
 						op.RequestBody = &generator.RequestBody{
 							Description: param.Description,
 							Required:    param.Required,
@@ -399,11 +402,15 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 				}
 
 				for _, succ := range anno.Success {
+					respRef := succ.Type
+					respRef = strings.ReplaceAll(respRef, "response.", "")
+					respRef = strings.ReplaceAll(respRef, "models.", "")
+					respRef = strings.ReplaceAll(respRef, "util.", "")
 					resp := generator.Response{
 						Description: succ.Description,
 						Content: map[string]generator.MediaType{
 							"application/json": {
-								Schema: generator.Schema{Ref: succ.Type},
+								Schema: generator.Schema{Ref: respRef},
 							},
 						},
 					}
@@ -414,11 +421,15 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 				}
 
 				for _, fail := range anno.Failure {
+					respRef := fail.Type
+					respRef = strings.ReplaceAll(respRef, "response.", "")
+					respRef = strings.ReplaceAll(respRef, "models.", "")
+					respRef = strings.ReplaceAll(respRef, "util.", "")
 					resp := generator.Response{
 						Description: fail.Description,
 						Content: map[string]generator.MediaType{
 							"application/json": {
-								Schema: generator.Schema{Ref: fail.Type},
+								Schema: generator.Schema{Ref: respRef},
 							},
 						},
 					}
