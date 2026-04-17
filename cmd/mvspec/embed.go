@@ -68,11 +68,15 @@ func getDocsContent() string {
 		"package mvdocs\n" +
 		"\n" +
 		"import (\n" +
+		"\t\"embed\"\n" +
 		"\t\"net/http\"\n" +
 		"\t\"os\"\n" +
 		"\t\"strings\"\n" +
 		"\t\"sync\"\n" +
 		")\n" +
+		"\n" +
+		"//go:embed index.html styles.css app.js\n" +
+		"var staticFiles embed.FS\n" +
 		"\n" +
 		"var specOnce sync.Once\n" +
 		"var specData []byte\n" +
@@ -106,7 +110,7 @@ func getDocsContent() string {
 		"\n" +
 		"\tif filePath == \"\" || filePath == \"index.html\" || path == \"/mvdocs\" {\n" +
 		"\t\tw.Header().Set(\"Content-Type\", \"text/html\")\n" +
-		"\t\tserveIndexHTML(w)\n" +
+		"\t\tserveEmbedded(w, \"index.html\")\n" +
 		"\t\treturn\n" +
 		"\t}\n" +
 		"\n" +
@@ -116,7 +120,6 @@ func getDocsContent() string {
 		"\t\treturn\n" +
 		"\t}\n" +
 		"\n" +
-		"\t// Try to read from mv-docs folder\n" +
 		"\tstaticExt := map[string]string{\n" +
 		"\t\t\"styles.css\": \"text/css\",\n" +
 		"\t\t\"app.js\": \"application/javascript\",\n" +
@@ -125,38 +128,43 @@ func getDocsContent() string {
 		"\n" +
 		"\tfor filename, contentType := range staticExt {\n" +
 		"\t\tif filePath == filename {\n" +
-		"\t\t\tdata, err := os.ReadFile(\"mv-docs/\" + filename)\n" +
-		"\t\t\tif err == nil {\n" +
-		"\t\t\t\tw.Header().Set(\"Content-Type\", contentType)\n" +
-		"\t\t\t\tw.Write(data)\n" +
-		"\t\t\t\treturn\n" +
-		"\t\t\t}\n" +
+		"\t\t\tw.Header().Set(\"Content-Type\", contentType)\n" +
+		"\t\t\tserveEmbedded(w, filename)\n" +
+		"\t\t\treturn\n" +
 		"\t\t}\n" +
 		"\t}\n" +
 		"\n" +
-		"\t// Default to index\n" +
 		"\tw.Header().Set(\"Content-Type\", \"text/html\")\n" +
-		"\tserveIndexHTML(w)\n" +
+		"\tserveEmbedded(w, \"index.html\")\n" +
 		"}\n" +
 		"\n" +
-		"func serveIndexHTML(w http.ResponseWriter) {\n" +
-		"\tdata, _ := os.ReadFile(\"mv-docs/index.html\")\n" +
-		"\tif len(data) == 0 {\n" +
+		"func serveEmbedded(w http.ResponseWriter, name string) {\n" +
+		"\tdata, err := staticFiles.ReadFile(name)\n" +
+		"\tif err != nil {\n" +
 		"\t\tdata = []byte(\"<html><body><h1>MVAPI Docs</h1><p>Run mvspec embed first</p></body></html>\")\n" +
 		"\t}\n" +
 		"\tw.Write(data)\n" +
 		"}\n" +
 		"\n" +
 		"func serveSpec(w http.ResponseWriter) {\n" +
-		"\tdata, _ := os.ReadFile(\"mv-spec.json\")\n" +
-		"\tif len(data) == 0 {\n" +
-		"\t\tdata = []byte(\"{\\\"openapi\\\":\\\"3.0.0\\\",\\\"info\\\":{\\\"title\\\":\\\"API\\\"},\\\"paths\\\":{}}\")\n" +
+		"\tspecOnce.Do(func() {\n" +
+		"\t\tpaths := []string{\"mv-spec.json\", \"./mv-spec.json\", \"../mv-spec.json\"}\n" +
+		"\t\tfor _, p := range paths {\n" +
+		"\t\t\tif d, err := os.ReadFile(p); err == nil {\n" +
+		"\t\t\t\tspecData = d\n" +
+		"\t\t\t\treturn\n" +
+		"\t\t\t}\n" +
+		"\t\t}\n" +
+		"\t})\n" +
+		"\tif len(specData) == 0 {\n" +
+		"\t\tspecData = []byte(\"{\\\"openapi\\\":\\\"3.0.0\\\",\\\"info\\\":{\\\"title\\\":\\\"API\\\"},\\\"paths\\\":{}}\")\n" +
 		"\t}\n" +
-		"\tw.Write(data)\n" +
+		"\tw.Write(specData)\n" +
 		"}\n" +
 		"\n" +
 		"func ReloadSpec() {\n" +
 		"\tspecOnce = sync.Once{}\n" +
+		"\tspecData = nil\n" +
 		"}\n"
 }
 
