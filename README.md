@@ -44,6 +44,7 @@ This creates `mvspec.yaml` in current directory.
 ```bash
 mvspec fmt         # Format annotations in code
 mvspec validate   # Validate without generating
+mvspec embed      # Generate embedded docs handler and UI
 ```
 
 ## Configuration
@@ -112,6 +113,45 @@ Generates `mv-spec.json` (OpenAPI 3.0.3) that can be imported into:
 - Swagger UI
 - Redoc
 - Any OpenAPI tool
+
+## Embeddable API Docs UI
+
+Generate a self-hosted API documentation with a custom Postman-like UI:
+
+```bash
+mvspec embed
+```
+
+This creates:
+- `mv-docs/docs.go` - Go handler for serving the docs
+- `mv-docs/index.html` - Custom API testing UI with green glass theme
+- `mv-docs/styles.css` - Styling
+- `mv-docs/app.js` - UI logic
+
+### Integration
+
+```go
+// In your main.go or router setup
+import "github.com/mvadly/mvspec/mv-docs"
+
+// Add route
+r.GET("/mvdocs", gin.WrapF(mvdocs.MvHandler()))
+```
+
+The UI includes:
+- Collections panel (organized API endpoints)
+- Request builder (method, URL, headers, body)
+- Response viewer (status, time, body with syntax highlighting)
+- History (recent requests)
+- Environment variables support
+- Green glassmorphism theme (#10B981)
+
+Access at `http://localhost:8080/mvdocs`
+
+### Environment Variables
+
+- `MVSPEC_DEV_ONLY=true` - Enable only in development mode
+- `GO_ENV=development|local` - Auto-detected as dev mode
 
 ## Example
 
