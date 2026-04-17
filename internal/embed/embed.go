@@ -243,6 +243,7 @@ func WatchSpec(filepath string, fn func()) error {
 			}
 		}
 	}
+	return nil
 }
 
 func WatchSpecAsync(filepath string, fn func()) {
