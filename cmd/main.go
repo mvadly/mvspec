@@ -12,6 +12,8 @@ import (
 )
 
 var (
+	version = "dev"
+
 	lang       string
 	output     string
 	exclude    string
@@ -20,6 +22,14 @@ var (
 )
 
 func main() {
+	// Handle version before flag.Parse() so -v/--version don't error
+	for _, a := range os.Args[1:] {
+		if a == "version" || a == "--version" || a == "-v" {
+			fmt.Printf("mvspec %s\n", version)
+			return
+		}
+	}
+
 	flag.StringVar(&lang, "lang", "auto", "Language: go, js, auto")
 	flag.StringVar(&output, "output", "mv-spec.json", "Output file")
 	flag.StringVar(&exclude, "exclude", "", "Directories to exclude (comma-separated)")

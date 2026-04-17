@@ -5,7 +5,7 @@ API Specification Generator - Generate OpenAPI 3.x specs from your Go/JS code wi
 ## Installation
 
 ```bash
-go install github.com/mvadly/mvspec@latest
+go install github.com/mvadly/mvspec/cmd@latest
 ```
 
 Or build from source:
@@ -42,6 +42,7 @@ This creates `mvspec.yaml` in current directory.
 ### Other commands
 
 ```bash
+mvspec version    # Print version
 mvspec fmt         # Format annotations in code
 mvspec validate   # Validate without generating
 mvspec embed      # Generate embedded docs handler and UI
