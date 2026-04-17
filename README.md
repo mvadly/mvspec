@@ -83,6 +83,27 @@ Uses swaggo-compatible format:
 // @Router     /users/{id} [get]
 ```
 
+### Request Body
+
+`@Param` with `body` generates an OpenAPI 3.x `requestBody`:
+
+```go
+// @Param request body CreateUserRequest true "User data"
+```
+
+This produces:
+```json
+"requestBody": {
+  "description": "User data",
+  "required": true,
+  "content": {
+    "application/json": {
+      "schema": { "$ref": "#/components/schemas/CreateUserRequest" }
+    }
+  }
+}
+```
+
 ### Global annotations (in main.go or entry file)
 
 ```go
@@ -133,7 +154,7 @@ This creates:
 
 ```go
 // In your main.go or router setup
-import "github.com/mvadly/mvspec/mv-docs"
+import "your-module/mv-docs"
 
 // Add route
 r.GET("/mvdocs", gin.WrapF(mvdocs.MvHandler()))
@@ -167,6 +188,19 @@ Access at `http://localhost:8080/mvdocs`
 // @Failure     404 {object} ErrorResponse
 // @Router      /users/{id} [get]
 func GetUserById(c *gin.Context) {
+    // handler code here
+}
+
+// @Summary     Create user
+// @Description Creates a new user
+// @Tags        users
+// @Accept      json
+// @Produce    json
+// @Param       request body CreateUserRequest true "User data"
+// @Success     201 {object} UserResponse
+// @Failure     400 {object} ErrorResponse
+// @Router      /users [post]
+func CreateUser(c *gin.Context) {
     // handler code here
 }
 ```
