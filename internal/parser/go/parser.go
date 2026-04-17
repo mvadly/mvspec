@@ -369,6 +369,25 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 				op.Tags = anno.Tags
 
 				for _, param := range anno.Params {
+					if param.In == "body" || param.In == "formData" {
+						schemaRef := param.Type
+						if !strings.HasPrefix(schemaRef, "#/") {
+							if strings.HasPrefix(schemaRef, "{") {
+								schemaRef = strings.Trim(schemaRef, "{}")
+							}
+							schemaRef = "#/components/schemas/" + schemaRef
+						}
+						op.RequestBody = &generator.RequestBody{
+							Description: param.Description,
+							Required:    param.Required,
+							Content: map[string]generator.MediaType{
+								"application/json": {
+									Schema: generator.Schema{Ref: schemaRef},
+								},
+							},
+						}
+						continue
+					}
 					pm := generator.Parameter{
 						Name:        param.Name,
 						In:          param.In,
