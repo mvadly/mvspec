@@ -1,15 +1,18 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/mvadly/mvspec/internal/config"
 )
 
 var outputPath string
 
-func runEmbed() error {
+func runEmbed(cfg *config.Config) error {
 	flag.StringVar(&outputPath, "o", "./mv-docs", "Output directory")
 	flag.Parse()
 
@@ -26,7 +29,7 @@ func runEmbed() error {
 		return fmt.Errorf("run mvspec first")
 	}
 
-	content := getDocsContent()
+	content := getDocsContent(cfg)
 	path := filepath.Join(dir, "docs.go")
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		return err
@@ -39,7 +42,7 @@ func runEmbed() error {
 	if err := writeDefaultFile(filepath.Join(dir, "styles.css"), getDefaultStyles()); err != nil {
 		return err
 	}
-	if err := writeDefaultFile(filepath.Join(dir, "app.js"), getDefaultAppJS()); err != nil {
+	if err := writeDefaultFile(filepath.Join(dir, "app.js"), getDefaultAppJS(cfg)); err != nil {
 		return err
 	}
 
@@ -60,7 +63,7 @@ func writeDefaultFile(path, content string) error {
 	return nil
 }
 
-func getDocsContent() string {
+func getDocsContent(cfg *config.Config) string {
 	return "// Package mvdocs provides embedded API documentation handler.\n" +
 		"// GENERATED FILE - DO NOT EDIT\n" +
 		"// Run 'mvspec embed' to regenerate\n" +
@@ -546,14 +549,28 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 }`
 }
 
-func getDefaultAppJS() string {
+func getDefaultAppJS(cfg *config.Config) string {
+	// Build default env vars from config
+	var defaultEnvVars string
+	if len(cfg.EnvVars) > 0 {
+		envMap := make(map[string]string)
+		for _, e := range cfg.EnvVars {
+			envMap[e.Name] = e.Value
+		}
+		b, _ := json.Marshal(envMap)
+		defaultEnvVars = string(b)
+	} else {
+		defaultEnvVars = "{}"
+	}
+
 	return `(function(){
   "use strict";
 
   // --- State ---
   let spec = null;
   let currentEntry = null;
-  let envVars = JSON.parse(localStorage.getItem("mvapi_env") || "{}");
+  let defaultEnvVars = ` + defaultEnvVars + `;
+  let envVars = JSON.parse(localStorage.getItem("mvapi_env") || JSON.stringify(defaultEnvVars));
   let history = JSON.parse(localStorage.getItem("mvapi_history") || "[]");
 
   // --- DOM refs ---
