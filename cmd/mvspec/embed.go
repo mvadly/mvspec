@@ -200,35 +200,34 @@ func getDefaultIndexHTML() string {
 
     <!-- Main Content -->
     <main class="main">
-      <div class="main-layout" id="mainLayout">
-        <!-- Column 1: Controls (Request Bar) -->
-        <div class="col-controls">
-          <div class="request-bar">
-            <button id="layoutToggle" class="layout-toggle" onclick="toggleLayout()" title="Toggle Layout">
-              <svg class="layout-icon icon-side-by-side" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="1" y="3" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
-                <rect x="10" y="3" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
-              </svg>
-              <svg class="layout-icon icon-stacked" width="16" height="16" viewBox="0 0 16 16" fill="none" style="display:none">
-                <rect x="3" y="1" width="10" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
-                <rect x="3" y="10" width="10" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
-              </svg>
-            </button>
-            <select id="methodSelect" class="method-select">
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
-              <option value="PUT">PUT</option>
-              <option value="PATCH">PATCH</option>
-              <option value="DELETE">DELETE</option>
-              <option value="HEAD">HEAD</option>
-              <option value="OPTIONS">OPTIONS</option>
-            </select>
-            <input type="text" id="urlInput" class="url-input" placeholder="Enter request URL or path..." />
-            <button id="sendBtn" class="send-btn">Send</button>
-          </div>
-        </div>
+      <!-- Request Bar (always top, not affected by toggle) -->
+      <div class="request-bar-wrapper">
+        <button id="layoutToggle" class="layout-toggle" onclick="toggleLayout()" title="Toggle Layout">
+          <svg class="layout-icon icon-side-by-side" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="1" y="3" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="10" y="3" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <svg class="layout-icon icon-stacked" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="3" y="1" width="10" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="3" y="10" width="10" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+        </button>
+        <select id="methodSelect" class="method-select">
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+          <option value="DELETE">DELETE</option>
+          <option value="HEAD">HEAD</option>
+          <option value="OPTIONS">OPTIONS</option>
+        </select>
+        <input type="text" id="urlInput" class="url-input" placeholder="Enter request URL or path..." />
+        <button id="sendBtn" class="send-btn">Send</button>
+      </div>
 
-        <!-- Column 2: Request Panel -->
+      <!-- Panels (affected by toggle) -->
+      <div class="panels-layout" id="panelsLayout">
+        <!-- Column 1: Request Panel -->
         <div class="col-request">
           <div class="request-panel">
             <div class="tabs">
@@ -264,7 +263,7 @@ func getDefaultIndexHTML() string {
           </div>
         </div>
 
-        <!-- Column 3: Response Panel -->
+        <!-- Column 2: Response Panel -->
         <div class="col-response">
           <div class="response-panel">
             <div class="response-meta" id="responseMeta">
@@ -370,30 +369,30 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .history-item:hover{background:var(--surface-hover);color:var(--text)}
 
 /* Main */
-.main{flex:1;display:flex;overflow:hidden;padding:16px 20px;gap:12px}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:16px 20px;gap:12px}
 
-/* Main Layout */
-.main-layout{display:flex;flex:1;gap:12px;min-height:0;width:100%}
-.col-controls{min-width:280px;max-width:320px;flex-shrink:0}
+/* Request Bar Wrapper */
+.request-bar-wrapper{display:flex;gap:8px;align-items:center;flex-shrink:0}
+
+/* Panels Layout (affected by toggle) */
+.panels-layout{display:flex;flex:1;gap:12px;min-height:0;width:100%}
 .col-request{flex:1;min-width:0;display:flex;flex-direction:column}
 .col-response{min-width:300px;max-width:400px;flex-shrink:0;display:flex;flex-direction:column}
 .col-response .response-panel{flex:1;display:flex;flex-direction:column;min-height:0}
 
 /* Vertical layout (stacked) */
-.main-layout.layout-vertical{flex-direction:column}
-.main-layout.layout-vertical .col-controls{max-width:100%;width:100%}
-.main-layout.layout-vertical .col-request{flex:none;min-height:200px}
-.main-layout.layout-vertical .col-response{flex:none;min-height:200px}
+.panels-layout.layout-vertical{flex-direction:column}
+.panels-layout.layout-vertical .col-request{flex:none;min-height:200px}
+.panels-layout.layout-vertical .col-response{flex:none;min-height:200px}
 
 /* Layout Toggle */
 .layout-toggle{padding:6px 10px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-dim);font-size:16px;transition:all .2s;display:flex;align-items:center;justify-content:center}
 .layout-toggle:hover{background:var(--surface-hover);border-color:var(--primary);color:var(--text)}
 .layout-icon{stroke:currentColor;fill:none}
-.main-layout:not(.layout-vertical) .icon-stacked{display:none}
-.main-layout.layout-vertical .icon-side-by-side{display:none}
+.panels-layout:not(.layout-vertical) .icon-stacked{display:none}
+.panels-layout.layout-vertical .icon-side-by-side{display:none}
 
 /* Request Bar */
-.request-bar{display:flex;gap:8px;align-items:center}
 .method-select{padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);color:var(--primary);font-family:var(--mono);font-weight:600;font-size:13px;border-radius:var(--radius-sm);cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;min-width:100px;transition:border-color .2s}
 .method-select:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-glow)}
 .method-select option{background:var(--bg);color:var(--text)}
@@ -745,16 +744,16 @@ func getDefaultAppJS() string {
 
   // --- Toggle Layout ---
   function toggleLayout() {
-    const container = document.getElementById('mainLayout');
+    const container = document.getElementById('panelsLayout');
     container.classList.toggle('layout-vertical');
-    localStorage.setItem('mvapi_layout', container.classList.contains('layout-vertical') ? 'vertical' : 'horizontal');
+    localStorage.setItem('mvapi_panels_layout', container.classList.contains('layout-vertical') ? 'vertical' : 'horizontal');
   }
   window.toggleLayout = toggleLayout;
 
   // Load saved layout preference
-  const savedLayout = localStorage.getItem('mvapi_layout');
+  const savedLayout = localStorage.getItem('mvapi_panels_layout');
   if (savedLayout === 'vertical') {
-    document.getElementById('mainLayout').classList.add('layout-vertical');
+    document.getElementById('panelsLayout').classList.add('layout-vertical');
   }
 
   // --- Send Request ---
