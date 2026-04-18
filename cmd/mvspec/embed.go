@@ -871,12 +871,20 @@ func getDefaultAppJS() string {
     // Add Response Body
     resultHTML += '<div class="result-section">';
     resultHTML += '<div class="example-label">Response:</div>';
+    // Try to format as JSON
+    let formatted;
+    try {
+      const parsed = JSON.parse(body);
+      formatted = syntaxHighlight(JSON.stringify(parsed, null, 2));
+    } catch(e) {
+      formatted = escapeHTML(body);
+    }
     resultHTML += '<pre class="example-json">' + formatted + '</pre>';
     resultHTML += '</div>';
 
     responseOutput.innerHTML = resultHTML;
 
-    // Populate response headers
+    // Populate response headers (for Headers tab)
     if (headers) {
       let headersText = "";
       headers.forEach((v, k) => { headersText += k + ": " + v + "\n"; });
@@ -885,8 +893,7 @@ func getDefaultAppJS() string {
       responseHeadersOutput.innerHTML = '<code>No response headers</code>';
     }
 
-    // Populate request headers (what was sent)
-    const headerPairs = getKVPairs("headersEditor");
+    // Populate request headers (for Request tab) - reuse headerPairs from above
     if (headerPairs.length > 0) {
       let requestHeadersText = "";
       for (const h of headerPairs) {
