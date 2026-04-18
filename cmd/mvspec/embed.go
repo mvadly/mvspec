@@ -351,9 +351,10 @@ func getDefaultIndexHTML() string {
         </div>
         <button class="add-row-btn" data-editor="envEditor">+ Add Variable</button>
       </div>
-      <div class="modal-footer">
-        <button class="send-btn" id="envSave">Save</button>
-      </div>
+<div class="modal-footer">
+          <button class="env-reset-btn" id="envReset">Reset to Defaults</button>
+          <button class="send-btn" id="envSave">Save</button>
+        </div>
     </div>
   </div>
 
@@ -536,7 +537,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .modal-body{padding:16px 20px;overflow-y:auto;flex:1}
 .modal-hint{font-size:12px;color:var(--text-dim);margin-bottom:12px}
 .modal-hint code{background:var(--glass);padding:2px 6px;border-radius:3px;font-family:var(--mono);color:var(--primary)}
-.modal-footer{padding:12px 20px;border-top:1px solid var(--glass-border);display:flex;justify-content:flex-end}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--glass-border);display:flex;justify-content:space-between}
+.env-reset-btn{background:transparent;border:1px solid var(--glass-border);color:var(--text-dim);padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;transition:all .2s}
+.env-reset-btn:hover{background:var(--surface-hover);color:var(--danger);border-color:var(--danger)}
 
 /* Responsive */
 @media(max-width:768px){
@@ -595,6 +598,7 @@ func getDefaultAppJS(cfg *config.Config) string {
   const envModal        = $("#envModal");
   const envClose        = $("#envClose");
   const envSave         = $("#envSave");
+  const envReset        = $("#envReset");
   const envEditorEl     = $("#envEditor");
   const responseHeadersOutput = $("#responseHeadersOutput");
   const requestSentOutput = $("#requestSentOutput");
@@ -1126,7 +1130,7 @@ func getDefaultAppJS(cfg *config.Config) string {
     return pairs;
   }
 
-  // --- Environment Variables ---
+// --- Environment Variables ---
   function setupEnvModal() {
     envBtn.addEventListener("click", () => {
       renderEnvEditor();
@@ -1135,60 +1139,15 @@ func getDefaultAppJS(cfg *config.Config) string {
     envClose.addEventListener("click", () => envModal.classList.add("hidden"));
     envModal.addEventListener("click", (e) => { if (e.target === envModal) envModal.classList.add("hidden"); });
     envSave.addEventListener("click", saveEnv);
+    envReset.addEventListener("click", resetEnv);
   }
 
-  // --- Auth ---
-  function setupAuth() {
-    const authTypeSelect = document.getElementById('authType');
-    const basicFields = document.getElementById('basicAuthFields');
-    const bearerFields = document.getElementById('bearerAuthFields');
-    const customFields = document.getElementById('customAuthFields');
-
-    // Load saved auth
-    const savedAuth = JSON.parse(localStorage.getItem('mvapi_auth') || '{}');
-    if (savedAuth.type) {
-      authTypeSelect.value = savedAuth.type;
-    }
-    if (savedAuth.username) document.getElementById('basicUsername').value = savedAuth.username;
-    if (savedAuth.password) document.getElementById('basicPassword').value = savedAuth.password;
-    if (savedAuth.token) document.getElementById('bearerToken').value = savedAuth.token;
-    if (savedAuth.customKey) document.getElementById('customAuthKey').value = savedAuth.customKey;
-    if (savedAuth.customValue) document.getElementById('customAuthValue').value = savedAuth.customValue;
-    updateAuthFields();
-
-    // Handle type change
-    authTypeSelect.addEventListener('change', updateAuthFields);
+  function resetEnv() {
+    localStorage.removeItem('mvapi_env');
+    envVars = JSON.parse(JSON.stringify(defaultEnvVars));
+    renderEnvEditor();
+    envModal.classList.add("hidden");
   }
-
-  function updateAuthFields() {
-    const authType = document.getElementById('authType').value;
-    document.getElementById('basicAuthFields').classList.toggle('hidden', authType !== 'basic');
-    document.getElementById('bearerAuthFields').classList.toggle('hidden', authType !== 'bearer');
-    document.getElementById('customAuthFields').classList.toggle('hidden', authType !== 'custom');
-
-    // Save to localStorage
-    const auth = {
-      type: authType,
-      username: document.getElementById('basicUsername').value,
-      password: document.getElementById('basicPassword').value,
-      token: document.getElementById('bearerToken').value,
-      customKey: document.getElementById('customAuthKey').value,
-      customValue: document.getElementById('customAuthValue').value
-    };
-    localStorage.setItem('mvapi_auth', JSON.stringify(auth));
-  }
-
-  // Add event listeners to auth inputs to save on change
-  document.addEventListener('change', function(e) {
-    if (e.target.id === 'authType' || 
-        e.target.id === 'basicUsername' || 
-        e.target.id === 'basicPassword' ||
-        e.target.id === 'bearerToken' ||
-        e.target.id === 'customAuthKey' ||
-        e.target.id === 'customAuthValue') {
-      updateAuthFields();
-    }
-  });
 
   function renderEnvEditor() {
     envEditorEl.innerHTML = "";
