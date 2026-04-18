@@ -185,10 +185,7 @@ Add both request and response examples for each status code using `request:{...}
 // @title           API Title
 // @version         1.0
 // @description     API description
-// @servers         https://api.example.com,https://staging.example.com
 ```
-
-Or use inline server annotation:
 
 ## Supported Frameworks
 
@@ -230,11 +227,13 @@ This creates:
 
 - **Postman-like layout**: Side-by-side request and response panels by default
 - **Layout toggle**: Switch between side-by-side and stacked vertical layout
+- **Sidebar toggle**: Show/hide the sidebar with collections and history
+- **Responsive design**: Works on all screen sizes
 - Collections panel (organized API endpoints by tags)
-- Request builder (method, URL, headers, body)
-- Response viewer (status, time, body with syntax highlighting)
+- Request builder (method, URL, headers, body, auth)
+- Response viewer (status, time, body, headers with syntax highlighting)
 - History (recent requests)
-- Environment variables support
+- Environment variables support with reset to defaults
 - Green glassmorphism theme (#10B981)
 
 ### Integration
