@@ -656,7 +656,7 @@ func getDefaultAppJS() string {
         const description = resp.description || "";
         
         examplesHTML += '<div class="response-example">';
-        examplesHTML += '<div class="response-header-row">';try 
+        examplesHTML += '<div class="response-header-row">'; 
         examplesHTML += '<span class="response-code ' + statusClass + '">' + code + '</span>';
         examplesHTML += '<span class="response-desc-text">' + description + '</span>';
         if (resp.requestExample !== undefined) {
