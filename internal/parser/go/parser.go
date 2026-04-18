@@ -643,28 +643,21 @@ func parseResponse(s string, success bool) *Response {
 		fmt.Sscanf(parts[0], "%d", &code)
 	}
 
-	desc := strings.Join(parts[2:], " ")
+	fullDesc := strings.Join(parts[2:], " ")
+	desc := fullDesc
 
 	var responseExample string
 	var requestExample string
 
 	// Extract request example: request:{...}
-	if idx := strings.Index(desc, "request:{"); idx > 0 {
-		desc = desc[:idx]
-		reqStart := strings.Index(desc, "request:{")
-		if reqStart < 0 {
-			desc = strings.Join(parts[2:], " ")
-			reqStart = strings.Index(desc, "request:{")
+	if idx := strings.Index(fullDesc, "request:{"); idx > 0 {
+		reqPart := fullDesc[idx:]
+		reqStart := strings.Index(reqPart, "{")
+		reqEnd := strings.LastIndex(reqPart, "}")
+		if reqStart >= 0 && reqEnd > reqStart {
+			requestExample = strings.TrimSpace(reqPart[reqStart+1 : reqEnd])
 		}
-		if reqStart >= 0 {
-			reqPart := desc[reqStart:]
-			reqStart = strings.Index(reqPart, "{")
-			reqEnd := strings.LastIndex(reqPart, "}")
-			if reqStart >= 0 && reqEnd > reqStart {
-				requestExample = strings.TrimSpace(reqPart[reqStart+1 : reqEnd])
-				desc = strings.TrimSpace(desc[:reqStart])
-			}
-		}
+		desc = fullDesc[:idx]
 	}
 
 	// Extract response example: {...} at the end
