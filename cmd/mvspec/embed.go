@@ -204,7 +204,16 @@ func getDefaultIndexHTML() string {
         <!-- Column 1: Controls (Request Bar) -->
         <div class="col-controls">
           <div class="request-bar">
-            <button id="layoutToggle" class="layout-toggle" onclick="toggleLayout()" title="Toggle Layout">⫾</button>
+            <button id="layoutToggle" class="layout-toggle" onclick="toggleLayout()" title="Toggle Layout">
+              <svg class="layout-icon icon-side-by-side" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="1" y="3" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                <rect x="10" y="3" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+              <svg class="layout-icon icon-stacked" width="16" height="16" viewBox="0 0 16 16" fill="none" style="display:none">
+                <rect x="3" y="1" width="10" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                <rect x="3" y="10" width="10" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+            </button>
             <select id="methodSelect" class="method-select">
               <option value="GET">GET</option>
               <option value="POST">POST</option>
@@ -379,7 +388,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* Layout Toggle */
 .layout-toggle{padding:6px 10px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-dim);font-size:16px;transition:all .2s;display:flex;align-items:center;justify-content:center}
 .layout-toggle:hover{background:var(--surface-hover);border-color:var(--primary);color:var(--text)}
-.layout-icon{line-height:1}
+.layout-icon{stroke:currentColor;fill:none}
+.main-layout:not(.layout-vertical) .icon-stacked{display:none}
+.main-layout.layout-vertical .icon-side-by-side{display:none}
 
 /* Request Bar */
 .request-bar{display:flex;gap:8px;align-items:center}
@@ -645,7 +656,7 @@ func getDefaultAppJS() string {
         const description = resp.description || "";
         
         examplesHTML += '<div class="response-example">';
-        examplesHTML += '<div class="response-header-row">';
+        examplesHTML += '<div class="response-header-row">';try 
         examplesHTML += '<span class="response-code ' + statusClass + '">' + code + '</span>';
         examplesHTML += '<span class="response-desc-text">' + description + '</span>';
         if (resp.requestExample !== undefined) {
@@ -735,10 +746,8 @@ func getDefaultAppJS() string {
   // --- Toggle Layout ---
   function toggleLayout() {
     const container = document.getElementById('mainLayout');
-    const isVertical = container.classList.toggle('layout-vertical');
-    const btn = document.getElementById('layoutToggle');
-    btn.textContent = isVertical ? '⫿' : '⫾';
-    localStorage.setItem('mvapi_layout', isVertical ? 'vertical' : 'horizontal');
+    container.classList.toggle('layout-vertical');
+    localStorage.setItem('mvapi_layout', container.classList.contains('layout-vertical') ? 'vertical' : 'horizontal');
   }
   window.toggleLayout = toggleLayout;
 
@@ -746,7 +755,6 @@ func getDefaultAppJS() string {
   const savedLayout = localStorage.getItem('mvapi_layout');
   if (savedLayout === 'vertical') {
     document.getElementById('mainLayout').classList.add('layout-vertical');
-    document.getElementById('layoutToggle').textContent = '⫿';
   }
 
   // --- Send Request ---
