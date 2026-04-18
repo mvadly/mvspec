@@ -188,13 +188,6 @@ func getDefaultIndexHTML() string {
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <button id="sidebarToggle" class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-            <line x1="3" y1="4" x2="13" y2="4"></line>
-            <line x1="3" y1="8" x2="13" y2="8"></line>
-            <line x1="3" y1="12" x2="13" y2="12"></line>
-          </svg>
-        </button>
         <h1 class="logo">MV<span>API</span></h1>
         <button class="env-btn" id="envBtn" title="Environment Variables">⚙</button>
       </div>
@@ -212,6 +205,13 @@ func getDefaultIndexHTML() string {
     <main class="main">
       <!-- Request Bar (always top, not affected by toggle) -->
       <div class="request-bar-wrapper">
+        <button id="sidebarToggle" class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <line x1="3" y1="4" x2="13" y2="4"></line>
+            <line x1="3" y1="8" x2="13" y2="8"></line>
+            <line x1="3" y1="12" x2="13" y2="12"></line>
+          </svg>
+        </button>
         <button id="layoutToggle" class="layout-toggle" onclick="toggleLayout()" title="Toggle Layout">
           <svg class="layout-icon icon-side-by-side" width="16" height="16" viewBox="0 0 16 16" fill="none">
             <rect x="1" y="3" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
@@ -1153,6 +1153,59 @@ func getDefaultAppJS(cfg *config.Config) string {
     });
     return pairs;
   }
+
+// --- Auth ---
+  function setupAuth() {
+    const authTypeSelect = document.getElementById('authType');
+    const basicFields = document.getElementById('basicAuthFields');
+    const bearerFields = document.getElementById('bearerAuthFields');
+    const customFields = document.getElementById('customAuthFields');
+
+    // Load saved auth
+    const savedAuth = JSON.parse(localStorage.getItem('mvapi_auth') || '{}');
+    if (savedAuth.type) {
+      authTypeSelect.value = savedAuth.type;
+    }
+    if (savedAuth.username) document.getElementById('basicUsername').value = savedAuth.username;
+    if (savedAuth.password) document.getElementById('basicPassword').value = savedAuth.password;
+    if (savedAuth.token) document.getElementById('bearerToken').value = savedAuth.token;
+    if (savedAuth.customKey) document.getElementById('customAuthKey').value = savedAuth.customKey;
+    if (savedAuth.customValue) document.getElementById('customAuthValue').value = savedAuth.customValue;
+    updateAuthFields();
+
+    // Handle type change
+    authTypeSelect.addEventListener('change', updateAuthFields);
+  }
+
+  function updateAuthFields() {
+    const authType = document.getElementById('authType').value;
+    document.getElementById('basicAuthFields').classList.toggle('hidden', authType !== 'basic');
+    document.getElementById('bearerAuthFields').classList.toggle('hidden', authType !== 'bearer');
+    document.getElementById('customAuthFields').classList.toggle('hidden', authType !== 'custom');
+
+    // Save to localStorage
+    const auth = {
+      type: authType,
+      username: document.getElementById('basicUsername').value,
+      password: document.getElementById('basicPassword').value,
+      token: document.getElementById('bearerToken').value,
+      customKey: document.getElementById('customAuthKey').value,
+      customValue: document.getElementById('customAuthValue').value
+    };
+    localStorage.setItem('mvapi_auth', JSON.stringify(auth));
+  }
+
+  // Add event listeners to auth inputs to save on change
+  document.addEventListener('change', function(e) {
+    if (e.target.id === 'authType' || 
+        e.target.id === 'basicUsername' || 
+        e.target.id === 'basicPassword' ||
+        e.target.id === 'bearerToken' ||
+        e.target.id === 'customAuthKey' ||
+        e.target.id === 'customAuthValue') {
+      updateAuthFields();
+    }
+  });
 
 // --- Environment Variables ---
   function setupEnvModal() {
