@@ -200,23 +200,29 @@ func getDefaultIndexHTML() string {
 
     <!-- Main Content -->
     <main class="main">
-      <!-- Request Builder -->
-      <div class="request-bar">
-        <select id="methodSelect" class="method-select">
-          <option value="GET">GET</option>
-          <option value="POST">POST</option>
-          <option value="PUT">PUT</option>
-          <option value="PATCH">PATCH</option>
-          <option value="DELETE">DELETE</option>
-          <option value="HEAD">HEAD</option>
-          <option value="OPTIONS">OPTIONS</option>
-        </select>
-        <input type="text" id="urlInput" class="url-input" placeholder="Enter request URL or path..." />
-        <button id="sendBtn" class="send-btn">Send</button>
-      </div>
+      <div class="main-layout" id="mainLayout">
+        <!-- Column 1: Controls -->
+        <div class="col-controls">
+          <div class="request-bar">
+            <button id="layoutToggle" class="layout-toggle" onclick="toggleLayout()" title="Toggle Layout">⫾</button>
+            <select id="methodSelect" class="method-select">
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="PATCH">PATCH</option>
+              <option value="DELETE">DELETE</option>
+              <option value="HEAD">HEAD</option>
+              <option value="OPTIONS">OPTIONS</option>
+            </select>
+            <input type="text" id="urlInput" class="url-input" placeholder="Enter request URL or path..." />
+            <button id="sendBtn" class="send-btn">Send</button>
+          </div>
+        </div>
 
-      <!-- Request Tabs -->
-      <div class="request-panel">
+        <!-- Column 2: Panels -->
+        <div class="col-panels">
+          <!-- Request Tabs -->
+          <div class="request-panel">
         <div class="tabs">
           <button class="tab active" data-tab="headers">Header</button>
           <button class="tab" data-tab="body">Body</button>
@@ -248,27 +254,24 @@ func getDefaultIndexHTML() string {
         </div>
       </div>
 
-      <!-- Response Viewer -->
-      <div class="response-panel" id="responsePanel">
-        <div class="response-meta" id="responseMeta">
-          <span class="response-status" id="responseStatus"></span>
-          <span class="response-time" id="responseTime"></span>
-          <span class="response-size" id="responseSize"></span>
+        <!-- Response Viewer -->
+        <div class="response-panel" id="responsePanel">
+          <div class="response-meta" id="responseMeta">
+            <span class="response-status" id="responseStatus"></span>
+            <span class="response-time" id="responseTime"></span>
+            <span class="response-size" id="responseSize"></span>
+          </div>
+          <div class="response-tabs">
+            <button class="tab active" data-restab="responseResult">Result</button>
+          </div>
+          <div class="response-content" id="responseResult">
+          </div>
         </div>
-        <div class="response-tabs">
-          <button class="tab active" data-restab="responseResult">Result</button>
         </div>
-        <div class="response-content" id="responseResult">
+
+        <!-- Column 3: Response Output -->
+        <div class="col-response">
           <pre id="responseOutput" class="response-output"><code>No response yet. Send a request to see results.</code></pre>
-        </div>
-      </div>
-          <pre id="responseOutput" class="response-output"><code>No response yet. Send a request to see results.</code></pre>
-        </div>
-        <div class="response-content hidden" id="responseExamples">
-          <pre id="responseExamplesOutput" class="response-output"></pre>
-        </div>
-        <div class="response-content hidden" id="responseHeaders">
-          <pre id="responseHeadersOutput" class="response-output"><code></code></pre>
         </div>
       </div>
     </main>
@@ -360,7 +363,30 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .history-item:hover{background:var(--surface-hover);color:var(--text)}
 
 /* Main */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:16px 20px;gap:12px}
+.main{flex:1;display:flex;overflow:hidden;padding:16px 20px;gap:12px}
+
+/* Main Layout */
+.main-layout{display:flex;flex:1;gap:12px;min-height:0;width:100%}
+.col-controls{display:flex;flex-direction:column;min-width:280px;max-width:320px;flex-shrink:0}
+.col-panels{display:flex;flex-direction:column;flex:1;gap:12px;min-width:0}
+.col-response{min-width:280px;max-width:400px;display:flex;flex-direction:column;flex-shrink:0}
+.col-response .response-output{flex:1;overflow:auto}
+.main-layout.layout-horizontal{flex-direction:row}
+.main-layout.layout-horizontal .col-controls{min-width:280px;max-width:280px}
+.main-layout.layout-horizontal .col-panels{flex-direction:row;flex:1}
+.main-layout.layout-horizontal .col-panels .request-panel,
+.main-layout.layout-horizontal .col-panels .response-panel{width:50%}
+
+/* Layout Toggle */
+.layout-toggle{padding:6px 10px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-dim);font-size:16px;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.layout-toggle:hover{background:var(--surface-hover);border-color:var(--primary);color:var(--text)}
+.layout-icon{line-height:1}
+
+/* Panels Container */
+.panels-container{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+.panels-container.layout-horizontal{flex-direction:row}
+.panels-container.layout-horizontal .request-panel,
+.panels-container.layout-horizontal .response-panel{width:50%}
 
 /* Request Bar */
 .request-bar{display:flex;gap:8px;align-items:center}
@@ -713,6 +739,20 @@ func getDefaultAppJS() string {
   }
   window.tryRequestExample = tryRequestExample;
 
+  // --- Toggle Layout ---
+  function toggleLayout() {
+    const container = document.getElementById('mainLayout');
+    container.classList.toggle('layout-horizontal');
+    localStorage.setItem('mvapi_layout', container.classList.contains('layout-horizontal') ? 'horizontal' : 'vertical');
+  }
+  window.toggleLayout = toggleLayout;
+
+  // Load saved layout preference
+  const savedLayout = localStorage.getItem('mvapi_layout');
+  if (savedLayout === 'horizontal') {
+    document.getElementById('mainLayout').classList.add('layout-horizontal');
+  }
+
   // --- Send Request ---
   function sendRequest() {
     const method = methodSelect.value;
@@ -799,20 +839,6 @@ func getDefaultAppJS() string {
     resultHTML += '</div>';
 
     responseOutput.innerHTML = resultHTML;
-    try {
-      const parsed = JSON.parse(body);
-      formatted = syntaxHighlight(JSON.stringify(parsed, null, 2));
-    } catch(e) {
-      formatted = escapeHTML(body);
-    }
-    responseOutput.innerHTML = formatted;
-
-    // Response headers
-    if (headers) {
-      let hText = "";
-      headers.forEach((v, k) => { hText += k + ": " + v + "\n"; });
-      responseHeadersOutput.innerHTML = "<code>" + escapeHTML(hText) + "</code>";
-    }
   }
 
   function syntaxHighlight(json) {
