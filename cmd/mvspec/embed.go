@@ -273,9 +273,17 @@ func getDefaultIndexHTML() string {
             </div>
             <div class="response-tabs">
               <button class="tab active" data-restab="responseResult">Result</button>
+              <button class="tab" data-restab="responseHeaders">Headers</button>
+              <button class="tab" data-restab="requestSent">Request</button>
             </div>
             <div class="response-content" id="responseResult">
               <pre id="responseOutput" class="response-output"><code>No response yet. Send a request to see results.</code></pre>
+            </div>
+            <div class="response-content hidden" id="responseHeaders">
+              <pre id="responseHeadersOutput" class="response-output"><code>No response headers</code></pre>
+            </div>
+            <div class="response-content hidden" id="requestSent">
+              <pre id="requestSentOutput" class="response-output"><code>No request headers</code></pre>
             </div>
           </div>
         </div>
@@ -520,6 +528,8 @@ func getDefaultAppJS() string {
   const envClose        = $("#envClose");
   const envSave         = $("#envSave");
   const envEditorEl     = $("#envEditor");
+  const responseHeadersOutput = $("#responseHeadersOutput");
+  const requestSentOutput = $("#requestSentOutput");
 
   // --- Init ---
   loadSpec();
@@ -849,6 +859,27 @@ func getDefaultAppJS() string {
     resultHTML += '</div>';
 
     responseOutput.innerHTML = resultHTML;
+
+    // Populate response headers
+    if (headers) {
+      let headersText = "";
+      headers.forEach((v, k) => { headersText += k + ": " + v + "\n"; });
+      responseHeadersOutput.innerHTML = '<code>' + escapeHTML(headersText) + '</code>';
+    } else {
+      responseHeadersOutput.innerHTML = '<code>No response headers</code>';
+    }
+
+    // Populate request headers (what was sent)
+    const headerPairs = getKVPairs("headersEditor");
+    if (headerPairs.length > 0) {
+      let requestHeadersText = "";
+      for (const h of headerPairs) {
+        if (h.key) requestHeadersText += substituteEnv(h.key) + ": " + substituteEnv(h.value) + "\n";
+      }
+      requestSentOutput.innerHTML = '<code>' + escapeHTML(requestHeadersText) + '</code>';
+    } else {
+      requestSentOutput.innerHTML = '<code>No request headers</code>';
+    }
   }
 
   function syntaxHighlight(json) {
