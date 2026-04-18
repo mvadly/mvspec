@@ -594,9 +594,19 @@ func getDefaultAppJS() string {
   function buildExampleBody(schema) {
     if (schema["$ref"]) {
       const refName = schema["$ref"].split("/").pop();
+      // Try direct lookup first
       if (spec.components && spec.components.schemas && spec.components.schemas[refName]) {
         return buildExampleBody(spec.components.schemas[refName]);
       }
+      // Try without package prefix (e.g., "dto.LoginDTO" -> "LoginDTO")
+      const parts = refName.split(".");
+      if (parts.length > 1) {
+        const shortName = parts[parts.length - 1];
+        if (spec.components && spec.components.schemas && spec.components.schemas[shortName]) {
+          return buildExampleBody(spec.components.schemas[shortName]);
+        }
+      }
+      return "{}";
     }
     if (schema.example) return JSON.stringify(schema.example, null, 2);
     if (schema.properties) {

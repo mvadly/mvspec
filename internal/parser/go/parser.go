@@ -366,6 +366,14 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 				}
 			}
 
+			if !matched {
+				routeMethod := extractMethodFromHandler(route.Handler)
+				if routeMethod != "" && containsIgnoreCase(o.Handler, routeMethod) {
+					matched = true
+					anno = o.Annotation
+				}
+			}
+
 			if matched && anno != nil {
 				op.Summary = anno.Summary
 				op.Description = anno.Description
@@ -650,4 +658,21 @@ func extractPathFromRouter(router string) string {
 		return path
 	}
 	return ""
+}
+
+func extractMethodFromHandler(handler string) string {
+	if handler == "" {
+		return ""
+	}
+	parts := strings.Split(handler, ".")
+	if len(parts) > 0 {
+		method := parts[len(parts)-1]
+		method = strings.TrimPrefix(method, "*")
+		return method
+	}
+	return ""
+}
+
+func containsIgnoreCase(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
