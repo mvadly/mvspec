@@ -127,13 +127,23 @@ func runInit() error {
 	yml := `title: My API
 version: 1.0
 description: API description
-host: api.example.com
-basePath: /v1
 output: mv-spec.json
 exclude:
   - ./internal
   - ./vendor
 parseTypes: true
+servers:
+  - url: http://localhost:8080
+    description: Local
+  - url: https://api.example.com
+    description: Production
+env:
+  - name: API_KEY
+    value: ""
+    description: "API Key for authentication"
+  - name: TOKEN
+    value: ""
+    description: "Bearer token for API access"
 `
 	return os.WriteFile(cfgFile, []byte(yml), 0644)
 }
