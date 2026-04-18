@@ -221,6 +221,7 @@ func getDefaultIndexHTML() string {
           <option value="HEAD">HEAD</option>
           <option value="OPTIONS">OPTIONS</option>
         </select>
+        <select id="serverSelect" class="server-select" style="display:none"></select>
         <input type="text" id="urlInput" class="url-input" placeholder="Enter request URL or path..." />
         <button id="sendBtn" class="send-btn">Send</button>
       </div>
@@ -231,11 +232,49 @@ func getDefaultIndexHTML() string {
         <div class="col-request">
           <div class="request-panel">
             <div class="tabs">
-              <button class="tab active" data-tab="headers">Header</button>
+              <button class="tab active" data-tab="auth">Auth</button>
+              <button class="tab" data-tab="headers">Header</button>
               <button class="tab" data-tab="body">Body</button>
               <button class="tab" data-tab="examples">Example</button>
             </div>
-            <div class="tab-content" id="headersTab">
+            <div class="tab-content" id="authTab">
+              <div class="auth-section">
+                <label class="auth-label">Type</label>
+                <select id="authType" class="auth-type-select">
+                  <option value="none">No Auth</option>
+                  <option value="basic">Basic Auth</option>
+                  <option value="bearer">Bearer Token</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div id="basicAuthFields" class="auth-fields hidden">
+                <div class="auth-section">
+                  <label class="auth-label">Username</label>
+                  <input type="text" id="basicUsername" class="auth-input" placeholder="Username" />
+                </div>
+                <div class="auth-section">
+                  <label class="auth-label">Password</label>
+                  <input type="password" id="basicPassword" class="auth-input" placeholder="Password" />
+                </div>
+              </div>
+              <div id="bearerAuthFields" class="auth-fields hidden">
+                <div class="auth-section">
+                  <label class="auth-label">Token</label>
+                  <input type="text" id="bearerToken" class="auth-input" placeholder="Bearer token" />
+                </div>
+              </div>
+              <div id="customAuthFields" class="auth-fields hidden">
+                <div class="auth-section">
+                  <label class="auth-label">Header Name</label>
+                  <input type="text" id="customAuthKey" class="auth-input" placeholder="Authorization" />
+                </div>
+                <div class="auth-section">
+                  <label class="auth-label">Header Value</label>
+                  <input type="text" id="customAuthValue" class="auth-input" placeholder="Token value" />
+                </div>
+              </div>
+            </div>
+            <div class="tab-content hidden" id="headersTab">
               <div class="kv-editor" id="paramsEditor">
                 <div class="kv-row">
                   <input type="text" placeholder="Key" class="kv-key" />
@@ -406,6 +445,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .method-select{padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);color:var(--primary);font-family:var(--mono);font-weight:600;font-size:13px;border-radius:var(--radius-sm);cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;min-width:100px;transition:border-color .2s}
 .method-select:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-glow)}
 .method-select option{background:var(--bg);color:var(--text)}
+.server-select{padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text-dim);font-family:var(--mono);font-size:13px;border-radius:var(--radius-sm);cursor:pointer;outline:none;min-width:150px}
+.server-select:focus{border-color:var(--primary)}
 .url-input{flex:1;padding:8px 14px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text);font-family:var(--mono);font-size:13px;border-radius:var(--radius-sm);outline:none;transition:border-color .2s}
 .url-input:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-glow)}
 .send-btn{padding:8px 24px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);font-weight:600;font-size:13px;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
@@ -423,6 +464,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .request-panel{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);padding:12px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .tab-content{padding-top:10px}
 .tab-content.hidden{display:none}
+.auth-section{margin-bottom:12px}
+.auth-label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-bottom:4px}
+.auth-type-select{width:100%;padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text);font-size:13px;border-radius:var(--radius-sm);cursor:pointer;outline:none}
+.auth-type-select:focus{border-color:var(--primary)}
+.auth-input{width:100%;padding:8px 12px;background:rgba(15,23,42,.6);border:1px solid var(--glass-border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;transition:border-color .2s}
+.auth-input:focus{border-color:var(--primary)}
+.auth-fields.hidden{display:none}
 .kv-editor{display:flex;flex-direction:column;gap:6px}
 .kv-row{display:flex;gap:6px;align-items:center}
 .kv-key,.kv-value{flex:1;padding:6px 10px;background:rgba(15,23,42,.6);border:1px solid var(--glass-border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:var(--mono);outline:none;transition:border-color .2s}
@@ -515,6 +563,7 @@ func getDefaultAppJS() string {
   const collectionsEl   = $("#collections");
   const searchInput     = $("#searchInput");
   const methodSelect    = $("#methodSelect");
+  const serverSelect    = $("#serverSelect");
   const urlInput        = $("#urlInput");
   const sendBtn         = $("#sendBtn");
   const bodyEditor      = $("#bodyEditor");
@@ -539,6 +588,7 @@ func getDefaultAppJS() string {
   setupTabs();
   setupKVEditors();
   setupEnvModal();
+  setupAuth();
 
   sendBtn.addEventListener("click", sendRequest);
   urlInput.addEventListener("keydown", (e) => { if(e.key==="Enter") sendRequest(); });
@@ -548,11 +598,38 @@ func getDefaultAppJS() string {
   function loadSpec() {
     fetch("mv-spec.json")
       .then((r) => r.json())
-      .then((data) => { spec = data; renderCollections(); })
+      .then((data) => { 
+        spec = data; 
+        renderCollections(); 
+        renderServerDropdown();
+      })
       .catch(() => {
         collectionsEl.innerHTML = '<p style="padding:12px;color:var(--text-dim);font-size:12px">Could not load mv-spec.json</p>';
       });
   }
+
+  // --- Render Server Dropdown ---
+  function renderServerDropdown() {
+    if (spec.servers && spec.servers.length > 1) {
+      serverSelect.innerHTML = "";
+      spec.servers.forEach((server) => {
+        const option = document.createElement('option');
+        option.value = server.url;
+        option.textContent = server.url;
+        serverSelect.appendChild(option);
+      });
+      serverSelect.style.display = 'block';
+    } else {
+      serverSelect.style.display = 'none';
+    }
+  }
+
+  // Handle server change
+  serverSelect.addEventListener('change', function() {
+    if (currentEntry) {
+      urlInput.value = serverSelect.value + currentEntry.path;
+    }
+  });
 
   // --- Render Collections ---
   function renderCollections(filter) {
@@ -625,7 +702,14 @@ func getDefaultAppJS() string {
     $$(".endpoint.active").forEach((el) => el.classList.remove("active"));
     event.currentTarget.classList.add("active");
     methodSelect.value = entry.method;
-    const basePath = (spec.servers && spec.servers[0] && spec.servers[0].url) || "";
+    
+    // Use selected server or first server from spec
+    let basePath = "";
+    if (serverSelect.style.display !== 'none' && serverSelect.value) {
+      basePath = serverSelect.value;
+    } else {
+      basePath = (spec.servers && spec.servers[0] && spec.servers[0].url) || "";
+    }
     urlInput.value = basePath + entry.path;
 
     // Populate params from path parameters
@@ -794,6 +878,28 @@ func getDefaultAppJS() string {
     const headers = {};
     for (const h of headerPairs) {
       if (h.key) headers[substituteEnv(h.key)] = substituteEnv(h.value);
+    }
+
+    // Add auth header
+    const authType = document.getElementById('authType').value;
+    if (authType === 'basic') {
+      const username = document.getElementById('basicUsername').value;
+      const password = document.getElementById('basicPassword').value;
+      if (username) {
+        const encoded = btoa(username + ':' + password);
+        headers['Authorization'] = 'Basic ' + encoded;
+      }
+    } else if (authType === 'bearer') {
+      const token = document.getElementById('bearerToken').value;
+      if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+      }
+    } else if (authType === 'custom') {
+      const key = document.getElementById('customAuthKey').value;
+      const value = document.getElementById('customAuthValue').value;
+      if (key && value) {
+        headers[key] = value;
+      }
     }
 
     // Build curl command
@@ -1013,6 +1119,59 @@ func getDefaultAppJS() string {
     envModal.addEventListener("click", (e) => { if (e.target === envModal) envModal.classList.add("hidden"); });
     envSave.addEventListener("click", saveEnv);
   }
+
+  // --- Auth ---
+  function setupAuth() {
+    const authTypeSelect = document.getElementById('authType');
+    const basicFields = document.getElementById('basicAuthFields');
+    const bearerFields = document.getElementById('bearerAuthFields');
+    const customFields = document.getElementById('customAuthFields');
+
+    // Load saved auth
+    const savedAuth = JSON.parse(localStorage.getItem('mvapi_auth') || '{}');
+    if (savedAuth.type) {
+      authTypeSelect.value = savedAuth.type;
+    }
+    if (savedAuth.username) document.getElementById('basicUsername').value = savedAuth.username;
+    if (savedAuth.password) document.getElementById('basicPassword').value = savedAuth.password;
+    if (savedAuth.token) document.getElementById('bearerToken').value = savedAuth.token;
+    if (savedAuth.customKey) document.getElementById('customAuthKey').value = savedAuth.customKey;
+    if (savedAuth.customValue) document.getElementById('customAuthValue').value = savedAuth.customValue;
+    updateAuthFields();
+
+    // Handle type change
+    authTypeSelect.addEventListener('change', updateAuthFields);
+  }
+
+  function updateAuthFields() {
+    const authType = document.getElementById('authType').value;
+    document.getElementById('basicAuthFields').classList.toggle('hidden', authType !== 'basic');
+    document.getElementById('bearerAuthFields').classList.toggle('hidden', authType !== 'bearer');
+    document.getElementById('customAuthFields').classList.toggle('hidden', authType !== 'custom');
+
+    // Save to localStorage
+    const auth = {
+      type: authType,
+      username: document.getElementById('basicUsername').value,
+      password: document.getElementById('basicPassword').value,
+      token: document.getElementById('bearerToken').value,
+      customKey: document.getElementById('customAuthKey').value,
+      customValue: document.getElementById('customAuthValue').value
+    };
+    localStorage.setItem('mvapi_auth', JSON.stringify(auth));
+  }
+
+  // Add event listeners to auth inputs to save on change
+  document.addEventListener('change', function(e) {
+    if (e.target.id === 'authType' || 
+        e.target.id === 'basicUsername' || 
+        e.target.id === 'basicPassword' ||
+        e.target.id === 'bearerToken' ||
+        e.target.id === 'customAuthKey' ||
+        e.target.id === 'customAuthValue') {
+      updateAuthFields();
+    }
+  });
 
   function renderEnvEditor() {
     envEditorEl.innerHTML = "";
