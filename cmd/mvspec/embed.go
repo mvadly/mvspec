@@ -214,16 +214,6 @@ func getDefaultIndexHTML() string {
             <line x1="3" y1="12" x2="13" y2="12"></line>
           </svg>
         </button>
-        <button id="layoutToggle" class="layout-toggle" onclick="toggleLayout()" title="Toggle Layout">
-          <svg class="layout-icon icon-side-by-side" width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <rect x="1" y="3" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
-            <rect x="10" y="3" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
-          </svg>
-          <svg class="layout-icon icon-stacked" width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <rect x="3" y="1" width="10" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
-            <rect x="3" y="10" width="10" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
-          </svg>
-        </button>
         <select id="methodSelect" class="method-select">
           <option value="GET">GET</option>
           <option value="POST">POST</option>
@@ -308,8 +298,7 @@ func getDefaultIndexHTML() string {
               <div id="bodyEditor" class="body-editor" placeholder='{ "key": "value" }'></div>
             </div>
             <div class="tab-content hidden" id="examplesTab">
-              <pre id="requestExamplesOutput" class="response-output"></pre>
-              <pre id="responseExamplesOutput" class="response-output" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--glass-border)"></pre>
+              <pre id="examplesOutput" class="response-output"></pre>
             </div>
           </div>
         </div>
@@ -447,9 +436,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 /* Vertical layout (stacked) */
 .panels-layout.layout-vertical{flex-direction:column}
-.panels-layout.layout-vertical .col-request{flex:none;min-height:150px;max-height:40vh;overflow:hidden}
+.panels-layout.layout-vertical .col-request{flex:none;min-height:150px;overflow:hidden}
 .panels-layout.layout-vertical .col-response{flex:none;min-height:150px;max-height:40vh}
-.panels-layout.layout-vertical .request-panel{height:100%;overflow-y:auto}
+.panels-layout.layout-vertical .request-panel{height:100vh;overflow-y:auto}
 
 /* Layout Toggle */
 .layout-toggle{padding:6px 10px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-dim);font-size:16px;transition:all .2s;display:flex;align-items:center;justify-content:center}
@@ -482,6 +471,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .request-panel{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);padding:12px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .tab-content{padding-top:10px}
 .tab-content.hidden{display:none}
+#examplesTab.tab-content{overflow-y:auto;max-height:calc(100vh - 180px)}
 .auth-section{margin-bottom:12px}
 .auth-label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-bottom:4px}
 .auth-type-select{width:100%;padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text);font-size:13px;border-radius:var(--radius-sm);cursor:pointer;outline:none}
@@ -633,8 +623,7 @@ func getDefaultAppJS(cfg *config.Config) string {
   const responseStatus  = $("#responseStatus");
   const responseTime    = $("#responseTime");
   const responseSize    = $("#responseSize");
-  const responseExamplesOutput = $("#responseExamplesOutput");
-  const requestExamplesOutput = $("#requestExamplesOutput");
+  const examplesOutput = $("#examplesOutput");
   const historyList     = $("#historyList");
   const envBtn          = $("#envBtn");
   const envModal        = $("#envModal");
@@ -804,13 +793,14 @@ func getDefaultAppJS(cfg *config.Config) string {
         setBodyEditorValue(buildExampleBody(jsonContent.schema));
       }
     }
+    if (bodyEditorInstance) {
+      bodyEditorInstance.refresh();
+    }
 
-    // Populate response examples
-    responseExamplesOutput.innerHTML = "";
-    requestExamplesOutput.innerHTML = "";
+    // Populate examples (request + response together)
+    examplesOutput.innerHTML = "";
     if (entry.op.responses) {
       let examplesHTML = "";
-      let requestExamplesHTML = "";
       for (const [code, resp] of Object.entries(entry.op.responses)) {
         const statusClass = code.startsWith("2") ? "s2xx" : code.startsWith("4") ? "s4xx" : code.startsWith("5") ? "s5xx" : "s3xx";
         const description = resp.description || "";
@@ -824,36 +814,18 @@ func getDefaultAppJS(cfg *config.Config) string {
         }
         examplesHTML += '</div>';
 
-        // Request example
         if (resp.requestExample !== undefined) {
           examplesHTML += '<div class="example-label">Request:</div>';
           examplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.requestExample, null, 2)) + '</pre>';
-          requestExamplesHTML += '<div class="response-example">';
-          requestExamplesHTML += '<div class="response-header-row">';
-          requestExamplesHTML += '<span class="response-code ' + statusClass + '">' + code + '</span>';
-          requestExamplesHTML += '<span class="response-desc-text">' + description + '</span>';
-          requestExamplesHTML += '<button class="try-btn" onclick="tryRequestExample(' + code + ')">Try</button>';
-          requestExamplesHTML += '</div>';
-          requestExamplesHTML += '<div class="example-label">Request:</div>';
-          requestExamplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.requestExample, null, 2)) + '</pre>';
         }
 
-        // Response example
         if (resp.example !== undefined) {
           examplesHTML += '<div class="example-label">Response:</div>';
           examplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.example, null, 2)) + '</pre>';
-          if (resp.requestExample !== undefined) {
-            requestExamplesHTML += '<div class="example-label">Response:</div>';
-            requestExamplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.example, null, 2)) + '</pre>';
-          }
         }
         examplesHTML += '</div>';
-        if (resp.requestExample !== undefined) {
-          requestExamplesHTML += '</div>';
-        }
       }
-      responseExamplesOutput.innerHTML = examplesHTML;
-      requestExamplesOutput.innerHTML = requestExamplesHTML || '<div style="color:var(--text-dim);padding:12px">No examples defined</div>';
+      examplesOutput.innerHTML = examplesHTML || '<div style="color:var(--text-dim);padding:12px">No examples defined</div>';
     }
   }
 
@@ -903,16 +875,6 @@ func getDefaultAppJS(cfg *config.Config) string {
   }
   window.tryRequestExample = tryRequestExample;
 
-  // --- Toggle Layout ---
-  function toggleLayout() {
-    const container = document.getElementById('panelsLayout');
-    const isVertical = container.classList.toggle('layout-vertical');
-    const btn = document.getElementById('layoutToggle');
-    btn.setAttribute('data-layout', isVertical ? 'vertical' : 'horizontal');
-    localStorage.setItem('mvapi_panels_layout', isVertical ? 'vertical' : 'horizontal');
-  }
-  window.toggleLayout = toggleLayout;
-
   // --- Toggle Sidebar ---
   function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -920,16 +882,6 @@ func getDefaultAppJS(cfg *config.Config) string {
     localStorage.setItem('mvapi_sidebar', sidebar.classList.contains('hidden') ? 'hidden' : 'visible');
   }
   window.toggleSidebar = toggleSidebar;
-
-  // Load saved layout preference
-  const savedLayout = localStorage.getItem('mvapi_panels_layout');
-  const btn = document.getElementById('layoutToggle');
-  if (savedLayout === 'vertical') {
-    document.getElementById('panelsLayout').classList.add('layout-vertical');
-    btn.setAttribute('data-layout', 'vertical');
-  } else {
-    btn.setAttribute('data-layout', 'horizontal');
-  }
 
   // Load saved sidebar preference
   const savedSidebar = localStorage.getItem('mvapi_sidebar');
@@ -1135,6 +1087,9 @@ func getDefaultAppJS(cfg *config.Config) string {
         const panel = tab.closest(".request-panel");
         panel.querySelectorAll(".tab-content").forEach((c) => c.classList.add("hidden"));
         panel.querySelector("#" + target + "Tab").classList.remove("hidden");
+        if (target === "body" && bodyEditorInstance) {
+          setTimeout(() => bodyEditorInstance.refresh(), 50);
+        }
       });
     });
     $$(".response-tabs .tab").forEach((tab) => {
