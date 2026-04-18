@@ -256,10 +256,14 @@ func getDefaultIndexHTML() string {
         </div>
         <div class="response-tabs">
           <button class="tab active" data-restab="responseBody">Body</button>
+          <button class="tab" data-restab="responseExamples">Examples</button>
           <button class="tab" data-restab="responseHeaders">Headers</button>
         </div>
         <div class="response-content" id="responseBody">
           <pre id="responseOutput" class="response-output"><code>No response yet. Send a request to see results.</code></pre>
+        </div>
+        <div class="response-content hidden" id="responseExamples">
+          <pre id="responseExamplesOutput" class="response-output"></pre>
         </div>
         <div class="response-content hidden" id="responseHeaders">
           <pre id="responseHeadersOutput" class="response-output"><code></code></pre>
@@ -404,6 +408,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .response-content::-webkit-scrollbar{width:6px}
 .response-content::-webkit-scrollbar-thumb{background:var(--glass-border);border-radius:4px}
 .response-output{margin:0;padding:12px;font-family:var(--mono);font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--text-dim)}
+.response-example{margin-bottom:16px;padding:12px;background:var(--glass);border-radius:var(--radius-sm);border:1px solid var(--glass-border)}
+.response-code{display:inline-block;padding:2px 8px;border-radius:var(--radius-sm);font-weight:600;font-size:12px;margin-right:8px}
+.response-code.s2xx{background:rgba(16,185,129,.15);color:#34D399}
+.response-code.s3xx{background:rgba(59,130,246,.15);color:#60A5FA}
+.response-code.s4xx{background:rgba(245,158,11,.15);color:#FBBF24}
+.response-code.s5xx{background:rgba(239,68,68,.15);color:#F87171}
+.response-desc{color:var(--text-dim);font-size:12px;margin-bottom:8px}
+.example-json{margin:8px 0 0;padding:8px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);font-size:12px;white-space:pre-wrap}
 
 /* JSON Highlighting */
 .json-key{color:#34D399}
@@ -460,6 +472,7 @@ func getDefaultAppJS() string {
   const responseTime    = $("#responseTime");
   const responseSize    = $("#responseSize");
   const responseHeadersOutput = $("#responseHeadersOutput");
+  const responseExamplesOutput = $("#responseExamplesOutput");
   const historyList     = $("#historyList");
   const envBtn          = $("#envBtn");
   const envModal        = $("#envModal");
@@ -588,6 +601,29 @@ func getDefaultAppJS() string {
       if (jsonContent && jsonContent.schema) {
         bodyEditor.value = buildExampleBody(jsonContent.schema);
       }
+    }
+
+    // Populate response examples
+    responseExamplesOutput.innerHTML = "";
+    if (entry.op.responses) {
+      let examplesHTML = "";
+      for (const [code, resp] of Object.entries(entry.op.responses)) {
+        const statusClass = code.startsWith("2") ? "s2xx" : code.startsWith("4") ? "s4xx" : code.startsWith("5") ? "s5xx" : "s3xx";
+        examplesHTML += '<div class="response-example">';
+        examplesHTML += '<div class="response-code ' + statusClass + '">' + code + '</div>';
+        examplesHTML += '<div class="response-desc">' + (resp.description || "") + '</div>';
+        if (resp.example !== undefined) {
+          examplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.example, null, 2)) + '</pre>';
+        } else if (resp.content && resp.content["application/json"]) {
+          const schema = resp.content["application/json"].schema;
+          if (schema) {
+            const exampleBody = buildExampleBody(schema);
+            examplesHTML += '<pre class="example-json">' + exampleBody + '</pre>';
+          }
+        }
+        examplesHTML += '</div>';
+      }
+      responseExamplesOutput.innerHTML = examplesHTML;
     }
   }
 
