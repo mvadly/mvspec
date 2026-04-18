@@ -416,6 +416,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .response-code.s5xx{background:rgba(239,68,68,.15);color:#F87171}
 .response-desc{color:var(--text-dim);font-size:12px;margin-bottom:8px}
 .example-json{margin:8px 0 0;padding:8px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);font-size:12px;white-space:pre-wrap}
+.example-label{font-weight:600;margin:12px 0 4px;color:var(--text)}
 
 /* JSON Highlighting */
 .json-key{color:#34D399}
@@ -612,12 +613,20 @@ func getDefaultAppJS() string {
         examplesHTML += '<div class="response-example">';
         examplesHTML += '<div class="response-code ' + statusClass + '">' + code + '</div>';
         examplesHTML += '<div class="response-desc">' + (resp.description || "") + '</div>';
+
+        if (resp.requestExample !== undefined) {
+          examplesHTML += '<div class="example-label">Request:</div>';
+          examplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.requestExample, null, 2)) + '</pre>';
+        }
+
         if (resp.example !== undefined) {
+          examplesHTML += '<div class="example-label">Response:</div>';
           examplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.example, null, 2)) + '</pre>';
         } else if (resp.content && resp.content["application/json"]) {
           const schema = resp.content["application/json"].schema;
           if (schema) {
             const exampleBody = buildExampleBody(schema);
+            examplesHTML += '<div class="example-label">Response:</div>';
             examplesHTML += '<pre class="example-json">' + exampleBody + '</pre>';
           }
         }

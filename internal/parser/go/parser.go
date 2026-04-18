@@ -62,10 +62,11 @@ type Param struct {
 }
 
 type Response struct {
-	Code        int
-	Type        string
-	Description string
-	Example     string
+	Code           int
+	Type           string
+	Description    string
+	Example        string
+	RequestExample string
 }
 
 type Operation struct {
@@ -448,7 +449,8 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 								Schema: generator.Schema{Ref: respRef},
 							},
 						},
-						Example: parseJSONExample(succ.Example),
+						Example:        parseJSONExample(succ.Example),
+						RequestExample: parseJSONExample(succ.RequestExample),
 					}
 					if op.Responses == nil {
 						op.Responses = make(map[string]generator.Response)
@@ -468,7 +470,8 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 								Schema: generator.Schema{Ref: respRef},
 							},
 						},
-						Example: parseJSONExample(fail.Example),
+						Example:        parseJSONExample(fail.Example),
+						RequestExample: parseJSONExample(fail.RequestExample),
 					}
 					if op.Responses == nil {
 						op.Responses = make(map[string]generator.Response)
@@ -543,7 +546,8 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 												Schema: generator.Schema{Ref: respRef},
 											},
 										},
-										Example: parseJSONExample(succ.Example),
+										Example:        parseJSONExample(succ.Example),
+										RequestExample: parseJSONExample(succ.RequestExample),
 									}
 									if op.Responses == nil {
 										op.Responses = make(map[string]generator.Response)
@@ -563,7 +567,8 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 												Schema: generator.Schema{Ref: respRef},
 											},
 										},
-										Example: parseJSONExample(fail.Example),
+										Example:        parseJSONExample(fail.Example),
+										RequestExample: parseJSONExample(fail.RequestExample),
 									}
 									if op.Responses == nil {
 										op.Responses = make(map[string]generator.Response)
@@ -638,18 +643,45 @@ func parseResponse(s string, success bool) *Response {
 		fmt.Sscanf(parts[0], "%d", &code)
 	}
 
-	resp := &Response{
-		Code:        code,
-		Type:        parts[1],
-		Description: strings.Join(parts[2:], " "),
+	desc := strings.Join(parts[2:], " ")
+
+	var responseExample string
+	var requestExample string
+
+	// Extract request example: request:{...}
+	if idx := strings.Index(desc, "request:{"); idx > 0 {
+		desc = desc[:idx]
+		reqStart := strings.Index(desc, "request:{")
+		if reqStart < 0 {
+			desc = strings.Join(parts[2:], " ")
+			reqStart = strings.Index(desc, "request:{")
+		}
+		if reqStart >= 0 {
+			reqPart := desc[reqStart:]
+			reqStart = strings.Index(reqPart, "{")
+			reqEnd := strings.LastIndex(reqPart, "}")
+			if reqStart >= 0 && reqEnd > reqStart {
+				requestExample = strings.TrimSpace(reqPart[reqStart+1 : reqEnd])
+				desc = strings.TrimSpace(desc[:reqStart])
+			}
+		}
 	}
 
-	desc := resp.Description
+	// Extract response example: {...} at the end
 	lastBrace := strings.LastIndex(desc, "{")
 	if lastBrace > 0 && strings.HasSuffix(desc, "}") {
-		resp.Description = strings.TrimSpace(desc[:lastBrace])
-		resp.Example = strings.TrimSpace(desc[lastBrace:])
+		responseExample = strings.TrimSpace(desc[lastBrace:])
+		desc = strings.TrimSpace(desc[:lastBrace])
 	}
+
+	return &Response{
+		Code:           code,
+		Type:           parts[1],
+		Description:    desc,
+		Example:        responseExample,
+		RequestExample: requestExample,
+	}
+}
 
 	return resp
 }
