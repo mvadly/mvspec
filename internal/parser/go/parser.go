@@ -376,6 +376,28 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 				}
 			}
 
+			if !matched && o.Annotation.Router != "" {
+				routeMethod := extractMethodFromHandler(route.Handler)
+				if routeMethod != "" && containsIgnoreCase(o.Handler, routeMethod) {
+					routerPath := extractPathFromRouter(o.Annotation.Router)
+					if routerPath == fullPath {
+						matched = true
+						anno = o.Annotation
+					}
+				}
+			}
+
+			if !matched && o.Annotation.Router != "" {
+				routeMethod := extractMethodFromHandler(route.Handler)
+				if routeMethod != "" && containsIgnoreCase(o.Handler, routeMethod) {
+					routerPath := extractPathFromRouter(o.Annotation.Router)
+					if routerPath == fullPath {
+						matched = true
+						anno = o.Annotation
+					}
+				}
+			}
+
 			if matched && anno != nil {
 				op.Summary = anno.Summary
 				op.Description = anno.Description
@@ -461,10 +483,11 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 			if route.Handler != "" {
 				op.Summary = route.Handler
 			} else {
+				routeMethod := extractMethodFromHandler(route.Handler)
 				for _, o := range p.operas {
-					if o.Annotation.Router != "" {
+					if o.Annotation.Router != "" && routeMethod != "" && containsIgnoreCase(o.Handler, routeMethod) {
 						routerParts := strings.Fields(o.Annotation.Router)
-						if len(routerParts) >= 2 {
+						if len(routerParts) >= 1 {
 							routerPath := routerParts[0]
 							if !strings.HasPrefix(routerPath, "/") {
 								routerPath = "/" + routerPath
