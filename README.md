@@ -172,6 +172,17 @@ This creates:
 - `mv-docs/styles.css` - Styling
 - `mv-docs/app.js` - UI logic
 
+### UI Features
+
+- **Postman-like layout**: Side-by-side request and response panels by default
+- **Layout toggle**: Switch between side-by-side and stacked vertical layout
+- Collections panel (organized API endpoints by tags)
+- Request builder (method, URL, headers, body)
+- Response viewer (status, time, body with syntax highlighting)
+- History (recent requests)
+- Environment variables support
+- Green glassmorphism theme (#10B981)
+
 ### Integration
 
 ```go
@@ -181,14 +192,6 @@ import "your-module/mv-docs"
 // Add route
 r.GET("/mvdocs/*path", gin.WrapH(mvdocs.MvHandler()))
 ```
-
-The UI includes:
-- Collections panel (organized API endpoints)
-- Request builder (method, URL, headers, body)
-- Response viewer (status, time, body with syntax highlighting)
-- History (recent requests)
-- Environment variables support
-- Green glassmorphism theme (#10B981)
 
 Access at `http://localhost:8080/mvdocs`
 

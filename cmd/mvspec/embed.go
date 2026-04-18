@@ -389,8 +389,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .layout-toggle{padding:6px 10px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-dim);font-size:16px;transition:all .2s;display:flex;align-items:center;justify-content:center}
 .layout-toggle:hover{background:var(--surface-hover);border-color:var(--primary);color:var(--text)}
 .layout-icon{stroke:currentColor;fill:none}
-.panels-layout:not(.layout-vertical) .icon-stacked{display:none}
-.panels-layout.layout-vertical .icon-side-by-side{display:none}
+#layoutToggle[data-layout="horizontal"] .icon-stacked{display:none}
+#layoutToggle[data-layout="vertical"] .icon-side-by-side{display:none}
+#layoutToggle:not([data-layout]) .icon-stacked{display:none}
 
 /* Request Bar */
 .method-select{padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);color:var(--primary);font-family:var(--mono);font-weight:600;font-size:13px;border-radius:var(--radius-sm);cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;min-width:100px;transition:border-color .2s}
@@ -745,15 +746,21 @@ func getDefaultAppJS() string {
   // --- Toggle Layout ---
   function toggleLayout() {
     const container = document.getElementById('panelsLayout');
-    container.classList.toggle('layout-vertical');
-    localStorage.setItem('mvapi_panels_layout', container.classList.contains('layout-vertical') ? 'vertical' : 'horizontal');
+    const isVertical = container.classList.toggle('layout-vertical');
+    const btn = document.getElementById('layoutToggle');
+    btn.setAttribute('data-layout', isVertical ? 'vertical' : 'horizontal');
+    localStorage.setItem('mvapi_panels_layout', isVertical ? 'vertical' : 'horizontal');
   }
   window.toggleLayout = toggleLayout;
 
   // Load saved layout preference
   const savedLayout = localStorage.getItem('mvapi_panels_layout');
+  const btn = document.getElementById('layoutToggle');
   if (savedLayout === 'vertical') {
     document.getElementById('panelsLayout').classList.add('layout-vertical');
+    btn.setAttribute('data-layout', 'vertical');
+  } else {
+    btn.setAttribute('data-layout', 'horizontal');
   }
 
   // --- Send Request ---
