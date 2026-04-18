@@ -250,6 +250,7 @@ func getDefaultIndexHTML() string {
             </div>
             <div class="tab-content hidden" id="examplesTab">
               <pre id="requestExamplesOutput" class="response-output"></pre>
+              <pre id="responseExamplesOutput" class="response-output" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--glass-border)"></pre>
             </div>
           </div>
         </div>
