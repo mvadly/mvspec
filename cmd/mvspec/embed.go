@@ -218,11 +218,11 @@ func getDefaultIndexHTML() string {
       <!-- Request Tabs -->
       <div class="request-panel">
         <div class="tabs">
-          <button class="tab active" data-tab="params">Params</button>
-          <button class="tab" data-tab="headers">Headers</button>
+          <button class="tab active" data-tab="headers">Header</button>
           <button class="tab" data-tab="body">Body</button>
+          <button class="tab" data-tab="examples">Example</button>
         </div>
-        <div class="tab-content" id="paramsTab">
+        <div class="tab-content" id="headersTab">
           <div class="kv-editor" id="paramsEditor">
             <div class="kv-row">
               <input type="text" placeholder="Key" class="kv-key" />
@@ -231,12 +231,10 @@ func getDefaultIndexHTML() string {
             </div>
           </div>
           <button class="add-row-btn" data-editor="paramsEditor">+ Add Param</button>
-        </div>
-        <div class="tab-content hidden" id="headersTab">
-          <div class="kv-editor" id="headersEditor">
+          <div class="kv-editor" id="headersEditor" style="margin-top:12px">
             <div class="kv-row">
-              <input type="text" placeholder="Key" class="kv-key" />
-              <input type="text" placeholder="Value" class="kv-value" />
+              <input type="text" placeholder="Header Key" class="kv-key" />
+              <input type="text" placeholder="Header Value" class="kv-value" />
               <button class="kv-remove">×</button>
             </div>
           </div>
@@ -244,6 +242,9 @@ func getDefaultIndexHTML() string {
         </div>
         <div class="tab-content hidden" id="bodyTab">
           <textarea id="bodyEditor" class="body-editor" placeholder='{ "key": "value" }'></textarea>
+        </div>
+        <div class="tab-content hidden" id="examplesTab">
+          <pre id="requestExamplesOutput" class="response-output"></pre>
         </div>
       </div>
 
@@ -255,11 +256,12 @@ func getDefaultIndexHTML() string {
           <span class="response-size" id="responseSize"></span>
         </div>
         <div class="response-tabs">
-          <button class="tab active" data-restab="responseBody">Body</button>
-          <button class="tab" data-restab="responseExamples">Examples</button>
-          <button class="tab" data-restab="responseHeaders">Headers</button>
+          <button class="tab active" data-restab="responseResult">Result</button>
         </div>
-        <div class="response-content" id="responseBody">
+        <div class="response-content" id="responseResult">
+          <pre id="responseOutput" class="response-output"><code>No response yet. Send a request to see results.</code></pre>
+        </div>
+      </div>
           <pre id="responseOutput" class="response-output"><code>No response yet. Send a request to see results.</code></pre>
         </div>
         <div class="response-content hidden" id="responseExamples">
@@ -417,6 +419,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .response-desc{color:var(--text-dim);font-size:12px;margin-bottom:8px}
 .example-json{margin:8px 0 0;padding:8px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);font-size:12px;white-space:pre-wrap}
 .example-label{font-weight:600;margin:12px 0 4px;color:var(--text)}
+.result-section{margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--glass-border)}
+.result-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.curl-command{background:rgba(0,0,0,.4);padding:10px;border-radius:var(--radius-sm);font-size:12px;overflow-x:auto}
 
 /* JSON Highlighting */
 .json-key{color:#34D399}
@@ -472,8 +477,8 @@ func getDefaultAppJS() string {
   const responseStatus  = $("#responseStatus");
   const responseTime    = $("#responseTime");
   const responseSize    = $("#responseSize");
-  const responseHeadersOutput = $("#responseHeadersOutput");
   const responseExamplesOutput = $("#responseExamplesOutput");
+  const requestExamplesOutput = $("#requestExamplesOutput");
   const historyList     = $("#historyList");
   const envBtn          = $("#envBtn");
   const envModal        = $("#envModal");
@@ -606,19 +611,28 @@ func getDefaultAppJS() string {
 
     // Populate response examples
     responseExamplesOutput.innerHTML = "";
+    requestExamplesOutput.innerHTML = "";
     if (entry.op.responses) {
       let examplesHTML = "";
+      let requestExamplesHTML = "";
       for (const [code, resp] of Object.entries(entry.op.responses)) {
         const statusClass = code.startsWith("2") ? "s2xx" : code.startsWith("4") ? "s4xx" : code.startsWith("5") ? "s5xx" : "s3xx";
         examplesHTML += '<div class="response-example">';
         examplesHTML += '<div class="response-code ' + statusClass + '">' + code + '</div>';
         examplesHTML += '<div class="response-desc">' + (resp.description || "") + '</div>';
 
+        // Request example
         if (resp.requestExample !== undefined) {
           examplesHTML += '<div class="example-label">Request:</div>';
           examplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.requestExample, null, 2)) + '</pre>';
+          requestExamplesHTML += '<div class="response-example">';
+          requestExamplesHTML += '<div class="response-code ' + statusClass + '">' + code + '</div>';
+          requestExamplesHTML += '<div class="example-label">Request:</div>';
+          requestExamplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.requestExample, null, 2)) + '</pre>';
+          requestExamplesHTML += '</div>';
         }
 
+        // Response example
         if (resp.example !== undefined) {
           examplesHTML += '<div class="example-label">Response:</div>';
           examplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.example, null, 2)) + '</pre>';
@@ -633,6 +647,7 @@ func getDefaultAppJS() string {
         examplesHTML += '</div>';
       }
       responseExamplesOutput.innerHTML = examplesHTML;
+      requestExamplesOutput.innerHTML = requestExamplesHTML || '<div style="color:var(--text-dim);padding:12px">No request examples defined. Add request examples in annotations using: request:{"field":"value"}</div>';
     }
   }
 
@@ -678,19 +693,32 @@ func getDefaultAppJS() string {
 
     // Build query params
     const params = getKVPairs("paramsEditor");
-    if (params.length > 0) {
-      const qs = params.map((p) => encodeURIComponent(p.key) + "=" + encodeURIComponent(p.value)).join("&");
-      url += (url.includes("?") ? "&" : "?") + qs;
+    let finalUrl = url;
+    if (params.length > 0 && params[0].key) {
+      const qs = params.filter(p => p.key).map((p) => encodeURIComponent(p.key) + "=" + encodeURIComponent(p.value)).join("&");
+      finalUrl += (url.includes("?") ? "&" : "?") + qs;
     }
 
     // Build headers
     const headerPairs = getKVPairs("headersEditor");
     const headers = {};
-    for (const h of headerPairs) headers[substituteEnv(h.key)] = substituteEnv(h.value);
+    for (const h of headerPairs) {
+      if (h.key) headers[substituteEnv(h.key)] = substituteEnv(h.value);
+    }
+
+    // Build curl command
+    let curl = "curl -X " + method;
+    for (const [key, value] of Object.entries(headers)) {
+      curl += " -H \"" + key + ": " + value + "\"";
+    }
+    const body = substituteEnv(bodyEditor.value.trim());
+    if (body && method !== "GET" && method !== "HEAD") {
+      curl += " -d '" + body.replace(/'/g, "'\\''") + "'";
+    }
+    curl += " " + finalUrl;
 
     const opts = { method, headers };
     if (method !== "GET" && method !== "HEAD") {
-      const body = substituteEnv(bodyEditor.value.trim());
       if (body) opts.body = body;
     }
 
@@ -703,12 +731,12 @@ func getDefaultAppJS() string {
         const elapsed = Math.round(performance.now() - start);
         const text = await res.text();
         const size = new Blob([text]).size;
-        showResponse(res.status, res.statusText, elapsed, size, text, res.headers);
+        showResponse(res.status, res.statusText, elapsed, size, text, res.headers, curl);
         addHistory(method, urlInput.value.trim(), res.status);
       })
       .catch((err) => {
         const elapsed = Math.round(performance.now() - start);
-        showResponse(0, "Error", elapsed, 0, err.message, null);
+        showResponse(0, "Error", elapsed, 0, err.message, null, curl);
       })
       .finally(() => {
         sendBtn.classList.remove("loading");
@@ -716,15 +744,33 @@ func getDefaultAppJS() string {
       });
   }
 
-  function showResponse(status, statusText, time, size, body, headers) {
+  function showResponse(status, statusText, time, size, body, headers, curl) {
     const statusClass = status >= 500 ? "s5xx" : status >= 400 ? "s4xx" : status >= 300 ? "s3xx" : status >= 200 ? "s2xx" : "";
     responseStatus.textContent = status ? status + " " + statusText : "Error";
     responseStatus.className = "response-status " + statusClass;
     responseTime.textContent = time + " ms";
     responseSize.textContent = formatSize(size);
 
+    // Build result content with curl and response
+    let resultHTML = '<div class="result-section">';
+    resultHTML += '<div class="example-label">Curl:</div>';
+    resultHTML += '<pre class="example-json curl-command">' + escapeHTML(curl) + '</pre>';
+    resultHTML += '</div>';
+
+    resultHTML += '<div class="result-section">';
+    resultHTML += '<div class="example-label">Response:</div>';
     // Try to format as JSON
     let formatted;
+    try {
+      const parsed = JSON.parse(body);
+      formatted = syntaxHighlight(JSON.stringify(parsed, null, 2));
+    } catch(e) {
+      formatted = escapeHTML(body);
+    }
+    resultHTML += '<pre class="example-json">' + formatted + '</pre>';
+    resultHTML += '</div>';
+
+    responseOutput.innerHTML = resultHTML;
     try {
       const parsed = JSON.parse(body);
       formatted = syntaxHighlight(JSON.stringify(parsed, null, 2));
