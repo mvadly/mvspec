@@ -417,6 +417,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .response-code.s4xx{background:rgba(245,158,11,.15);color:#FBBF24}
 .response-code.s5xx{background:rgba(239,68,68,.15);color:#F87171}
 .response-desc{color:var(--text-dim);font-size:12px;margin-bottom:8px}
+.response-header-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.response-desc-text{flex:1;color:var(--text-dim);font-size:12px}
+.try-btn{padding:4px 12px;background:linear-gradient(135deg,rgba(16,185,129,0.8),rgba(16,185,129,0.6));color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;font-weight:500}
+.try-btn:hover{opacity:0.9}
 .example-json{margin:8px 0 0;padding:8px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);font-size:12px;white-space:pre-wrap}
 .example-label{font-weight:600;margin:12px 0 4px;color:var(--text)}
 .result-section{margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--glass-border)}
@@ -460,6 +464,7 @@ func getDefaultAppJS() string {
 
   // --- State ---
   let spec = null;
+  let currentEntry = null;
   let envVars = JSON.parse(localStorage.getItem("mvapi_env") || "{}");
   let history = JSON.parse(localStorage.getItem("mvapi_history") || "[]");
 
@@ -574,6 +579,7 @@ func getDefaultAppJS() string {
   }
 
   function selectEndpoint(entry) {
+    currentEntry = entry;
     $$(".endpoint.active").forEach((el) => el.classList.remove("active"));
     event.currentTarget.classList.add("active");
     methodSelect.value = entry.method;
@@ -617,37 +623,47 @@ func getDefaultAppJS() string {
       let requestExamplesHTML = "";
       for (const [code, resp] of Object.entries(entry.op.responses)) {
         const statusClass = code.startsWith("2") ? "s2xx" : code.startsWith("4") ? "s4xx" : code.startsWith("5") ? "s5xx" : "s3xx";
+        const description = resp.description || "";
+        
         examplesHTML += '<div class="response-example">';
-        examplesHTML += '<div class="response-code ' + statusClass + '">' + code + '</div>';
-        examplesHTML += '<div class="response-desc">' + (resp.description || "") + '</div>';
+        examplesHTML += '<div class="response-header-row">';
+        examplesHTML += '<span class="response-code ' + statusClass + '">' + code + '</span>';
+        examplesHTML += '<span class="response-desc-text">' + description + '</span>';
+        if (resp.requestExample !== undefined) {
+          examplesHTML += '<button class="try-btn" onclick="tryRequestExample(' + code + ')">Try</button>';
+        }
+        examplesHTML += '</div>';
 
         // Request example
         if (resp.requestExample !== undefined) {
           examplesHTML += '<div class="example-label">Request:</div>';
           examplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.requestExample, null, 2)) + '</pre>';
           requestExamplesHTML += '<div class="response-example">';
-          requestExamplesHTML += '<div class="response-code ' + statusClass + '">' + code + '</div>';
+          requestExamplesHTML += '<div class="response-header-row">';
+          requestExamplesHTML += '<span class="response-code ' + statusClass + '">' + code + '</span>';
+          requestExamplesHTML += '<span class="response-desc-text">' + description + '</span>';
+          requestExamplesHTML += '<button class="try-btn" onclick="tryRequestExample(' + code + ')">Try</button>';
+          requestExamplesHTML += '</div>';
           requestExamplesHTML += '<div class="example-label">Request:</div>';
           requestExamplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.requestExample, null, 2)) + '</pre>';
-          requestExamplesHTML += '</div>';
         }
 
         // Response example
         if (resp.example !== undefined) {
           examplesHTML += '<div class="example-label">Response:</div>';
           examplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.example, null, 2)) + '</pre>';
-        } else if (resp.content && resp.content["application/json"]) {
-          const schema = resp.content["application/json"].schema;
-          if (schema) {
-            const exampleBody = buildExampleBody(schema);
-            examplesHTML += '<div class="example-label">Response:</div>';
-            examplesHTML += '<pre class="example-json">' + exampleBody + '</pre>';
+          if (resp.requestExample !== undefined) {
+            requestExamplesHTML += '<div class="example-label">Response:</div>';
+            requestExamplesHTML += '<pre class="example-json">' + syntaxHighlight(JSON.stringify(resp.example, null, 2)) + '</pre>';
           }
         }
         examplesHTML += '</div>';
+        if (resp.requestExample !== undefined) {
+          requestExamplesHTML += '</div>';
+        }
       }
       responseExamplesOutput.innerHTML = examplesHTML;
-      requestExamplesOutput.innerHTML = requestExamplesHTML || '<div style="color:var(--text-dim);padding:12px">No request examples defined. Add request examples in annotations using: request:{"field":"value"}</div>';
+      requestExamplesOutput.innerHTML = requestExamplesHTML || '<div style="color:var(--text-dim);padding:12px">No examples defined</div>';
     }
   }
 
@@ -684,6 +700,18 @@ func getDefaultAppJS() string {
     }
     return "{}";
   }
+
+  // --- Try Request Example ---
+  function tryRequestExample(code) {
+    if (!currentEntry || !currentEntry.op.responses || !currentEntry.op.responses[code]) return;
+    const resp = currentEntry.op.responses[code];
+    if (resp.requestExample !== undefined) {
+      bodyEditor.value = JSON.stringify(resp.requestExample, null, 2);
+      // Switch to Body tab
+      document.querySelector('.request-panel .tabs .tab[data-tab="body"]').click();
+    }
+  }
+  window.tryRequestExample = tryRequestExample;
 
   // --- Send Request ---
   function sendRequest() {
