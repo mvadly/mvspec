@@ -57,14 +57,67 @@ Create `mvspec.yaml` in your project root:
 title: My API
 version: 1.0
 description: API description
-host: api.example.com
-basePath: /v1
 output: mv-spec.json
 exclude:
   - ./internal
   - ./vendor
 parseTypes: true
+servers:
+  - url: http://localhost:8080
+    description: Local
+  - url: https://api.example.com
+    description: Production
+env:
+  - name: API_KEY
+    value: ""
+    description: "API Key for authentication"
+  - name: TOKEN
+    value: ""
+    description: "Bearer token for API access"
 ```
+
+### Servers (Multiple Base URLs)
+
+Define multiple server URLs in your config. The API docs UI will show a dropdown to switch between them.
+
+- **1 server**: Used automatically as the base URL
+- **2+ servers**: Dropdown appears in the request bar, users can switch between environments
+
+```yaml
+servers:
+  - url: http://localhost:8080
+    description: Local Development
+  - url: https://dev.api.example.com
+    description: Development
+  - url: https://qa.api.example.com
+    description: QA
+  - url: https://staging.api.example.com
+    description: Staging
+  - url: https://api.example.com
+    description: Production
+```
+
+### Environment Variables
+
+Pre-define environment variables that will be available in the API docs UI. Users can edit values and use them in requests with `{{VARIABLE_NAME}}` syntax.
+
+```yaml
+env:
+  - name: API_KEY
+    value: ""
+    description: "API Key for authentication"
+  - name: TOKEN
+    value: ""
+    description: "Bearer token"
+  - name: BASE_URL
+    value: "https://api.example.com"
+    description: "Base URL for API calls"
+```
+
+The UI allows users to:
+- View and edit environment variables
+- Reset to default values from config
+- Use variables in URLs, headers, and body with `{{VARIABLE_NAME}}` syntax
 
 ## Supported Annotations
 
@@ -132,9 +185,10 @@ Add both request and response examples for each status code using `request:{...}
 // @title           API Title
 // @version         1.0
 // @description     API description
-// @host           api.example.com
-// @basePath       /v1
+// @servers         https://api.example.com,https://staging.example.com
 ```
+
+Or use inline server annotation:
 
 ## Supported Frameworks
 
