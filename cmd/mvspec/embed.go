@@ -225,7 +225,12 @@ func getDefaultIndexHTML() string {
         </select>
         <select id="serverSelect" class="server-select" style="display:none"></select>
         <input type="text" id="urlInput" class="url-input" placeholder="Enter request URL or path..." />
-        <button id="sendBtn" class="send-btn">Send</button>
+        <button id="sendBtn" class="send-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
       </div>
 
       <!-- Panels (affected by toggle) -->
@@ -381,13 +386,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* Sidebar */
 .sidebar{width:280px;min-width:280px;background:rgba(15,23,42,.92);border-right:1px solid var(--glass-border);display:flex;flex-direction:column;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:width .3s}
 .sidebar.hidden{width:0;min-width:0;display:none;overflow:hidden;border:none}
-.sidebar-toggle{padding:6px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-dim);transition:all .2s;display:flex;align-items:center;justify-content:center}
+.sidebar-toggle{padding:10px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-dim);transition:all .2s;display:flex;align-items:center;justify-content:center}
 .sidebar-toggle:hover{background:var(--surface-hover);color:var(--primary)}
-.sidebar-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px}
-.logo{font-size:18px;font-weight:700;color:var(--primary);letter-spacing:1px}
-.logo span{color:var(--text)}
-.env-btn{background:var(--glass);border:1px solid var(--glass-border);color:var(--text-dim);width:32px;height:32px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;transition:all .2s}
+
+.env-btn{background:var(--glass);border:1px solid var(--glass-border);color:var(--text-dim);width:32px;height:32px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;transition:all .2s;display:flex;align-items:center;justify-content:center}
 .env-btn:hover{background:var(--surface-hover);color:var(--primary);border-color:var(--primary)}
+.sidebar-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+.logo{font-size:18px;font-weight:700;color:var(--text);margin:0}
+.logo span{color:var(--primary)}
 .sidebar-search{padding:0 12px 12px}
 .sidebar-search input{width:100%;padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;transition:border-color .2s}
 .sidebar-search input:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-glow)}
@@ -449,19 +455,21 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 #layoutToggle:not([data-layout]) .icon-stacked{display:none}
 
 /* Request Bar */
-.method-select{padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);color:var(--primary);font-family:var(--mono);font-weight:600;font-size:13px;border-radius:var(--radius-sm);cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;min-width:100px;transition:border-color .2s}
-.method-select:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-glow)}
-.method-select option{background:var(--bg);color:var(--text)}
-.server-select{padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text-dim);font-family:var(--mono);font-size:13px;border-radius:var(--radius-sm);cursor:pointer;outline:none;min-width:150px}
-.server-select:focus{border-color:var(--primary)}
-.url-input{flex:1;padding:8px 14px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text);font-family:var(--mono);font-size:13px;border-radius:var(--radius-sm);outline:none;transition:border-color .2s}
+.method-select,.server-select,.auth-type-select{padding:10px 32px 10px 12px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text);font-family:var(--mono);font-size:13px;border-radius:var(--radius-sm);cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;transition:border-color .2s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b9bb4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.method-select{color:var(--primary);font-weight:600;min-width:100px}
+.method-select:focus,.server-select:focus,.auth-type-select:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-glow)}
+.method-select option,.server-select option,.auth-type-select option{background:var(--bg);color:var(--text)}
+.server-select{min-width:150px}
+.auth-type-select{width:100%}
+.url-input{flex:1;padding:10px 14px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text);font-family:var(--mono);font-size:13px;border-radius:var(--radius-sm);outline:none;transition:border-color .2s}
 .url-input:focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-glow)}
-.send-btn{padding:8px 24px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);font-weight:600;font-size:13px;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
+.url-input::placeholder{color:var(--text-muted)}
+.send-btn{display:flex;align-items:center;gap:6px;padding:10px 24px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);font-weight:600;font-size:13px;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
 .send-btn:hover{box-shadow:0 0 20px var(--primary-glow);transform:translateY(-1px)}
 .send-btn:active{transform:translateY(0)}
 .send-btn.loading{opacity:.7;pointer-events:none}
-
-/* Tabs */
+.send-btn .spin{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .tabs,.response-tabs{display:flex;gap:2px;border-bottom:1px solid var(--glass-border);padding-bottom:0}
 .tab{padding:8px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
 .tab:hover{color:var(--text)}
@@ -474,8 +482,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 #examplesTab.tab-content{overflow-y:auto;max-height:calc(100vh - 180px)}
 .auth-section{margin-bottom:12px}
 .auth-label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-bottom:4px}
-.auth-type-select{width:100%;padding:8px 12px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text);font-size:13px;border-radius:var(--radius-sm);cursor:pointer;outline:none}
-.auth-type-select:focus{border-color:var(--primary)}
 .auth-input{width:100%;padding:8px 12px;background:rgba(15,23,42,.6);border:1px solid var(--glass-border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;outline:none;transition:border-color .2s}
 .auth-input:focus{border-color:var(--primary)}
 .auth-fields.hidden{display:none}
@@ -949,7 +955,7 @@ func getDefaultAppJS(cfg *config.Config) string {
     }
 
     sendBtn.classList.add("loading");
-    sendBtn.textContent = "Sending...";
+    sendBtn.innerHTML = '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>';
     const start = performance.now();
 
     fetch(url, opts)
@@ -966,7 +972,7 @@ func getDefaultAppJS(cfg *config.Config) string {
       })
       .finally(() => {
         sendBtn.classList.remove("loading");
-        sendBtn.textContent = "Send";
+        sendBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
       });
   }
 
