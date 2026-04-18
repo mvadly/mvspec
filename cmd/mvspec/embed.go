@@ -201,7 +201,7 @@ func getDefaultIndexHTML() string {
     <!-- Main Content -->
     <main class="main">
       <div class="main-layout" id="mainLayout">
-        <!-- Column 1: Controls -->
+        <!-- Column 1: Controls (Request Bar) -->
         <div class="col-controls">
           <div class="request-bar">
             <button id="layoutToggle" class="layout-toggle" onclick="toggleLayout()" title="Toggle Layout">⫾</button>
@@ -219,59 +219,56 @@ func getDefaultIndexHTML() string {
           </div>
         </div>
 
-        <!-- Column 2: Panels -->
-        <div class="col-panels">
-          <!-- Request Tabs -->
+        <!-- Column 2: Request Panel -->
+        <div class="col-request">
           <div class="request-panel">
-        <div class="tabs">
-          <button class="tab active" data-tab="headers">Header</button>
-          <button class="tab" data-tab="body">Body</button>
-          <button class="tab" data-tab="examples">Example</button>
-        </div>
-        <div class="tab-content" id="headersTab">
-          <div class="kv-editor" id="paramsEditor">
-            <div class="kv-row">
-              <input type="text" placeholder="Key" class="kv-key" />
-              <input type="text" placeholder="Value" class="kv-value" />
-              <button class="kv-remove">×</button>
+            <div class="tabs">
+              <button class="tab active" data-tab="headers">Header</button>
+              <button class="tab" data-tab="body">Body</button>
+              <button class="tab" data-tab="examples">Example</button>
+            </div>
+            <div class="tab-content" id="headersTab">
+              <div class="kv-editor" id="paramsEditor">
+                <div class="kv-row">
+                  <input type="text" placeholder="Key" class="kv-key" />
+                  <input type="text" placeholder="Value" class="kv-value" />
+                  <button class="kv-remove">×</button>
+                </div>
+              </div>
+              <button class="add-row-btn" data-editor="paramsEditor">+ Add Param</button>
+              <div class="kv-editor" id="headersEditor" style="margin-top:12px">
+                <div class="kv-row">
+                  <input type="text" placeholder="Header Key" class="kv-key" />
+                  <input type="text" placeholder="Header Value" class="kv-value" />
+                  <button class="kv-remove">×</button>
+                </div>
+              </div>
+              <button class="add-row-btn" data-editor="headersEditor">+ Add Header</button>
+            </div>
+            <div class="tab-content hidden" id="bodyTab">
+              <textarea id="bodyEditor" class="body-editor" placeholder='{ "key": "value" }'></textarea>
+            </div>
+            <div class="tab-content hidden" id="examplesTab">
+              <pre id="requestExamplesOutput" class="response-output"></pre>
             </div>
           </div>
-          <button class="add-row-btn" data-editor="paramsEditor">+ Add Param</button>
-          <div class="kv-editor" id="headersEditor" style="margin-top:12px">
-            <div class="kv-row">
-              <input type="text" placeholder="Header Key" class="kv-key" />
-              <input type="text" placeholder="Header Value" class="kv-value" />
-              <button class="kv-remove">×</button>
-            </div>
-          </div>
-          <button class="add-row-btn" data-editor="headersEditor">+ Add Header</button>
-        </div>
-        <div class="tab-content hidden" id="bodyTab">
-          <textarea id="bodyEditor" class="body-editor" placeholder='{ "key": "value" }'></textarea>
-        </div>
-        <div class="tab-content hidden" id="examplesTab">
-          <pre id="requestExamplesOutput" class="response-output"></pre>
-        </div>
-      </div>
-
-        <!-- Response Viewer -->
-        <div class="response-panel" id="responsePanel">
-          <div class="response-meta" id="responseMeta">
-            <span class="response-status" id="responseStatus"></span>
-            <span class="response-time" id="responseTime"></span>
-            <span class="response-size" id="responseSize"></span>
-          </div>
-          <div class="response-tabs">
-            <button class="tab active" data-restab="responseResult">Result</button>
-          </div>
-          <div class="response-content" id="responseResult">
-          </div>
-        </div>
         </div>
 
-        <!-- Column 3: Response Output -->
+        <!-- Column 3: Response Panel -->
         <div class="col-response">
-          <pre id="responseOutput" class="response-output"><code>No response yet. Send a request to see results.</code></pre>
+          <div class="response-panel">
+            <div class="response-meta" id="responseMeta">
+              <span class="response-status" id="responseStatus"></span>
+              <span class="response-time" id="responseTime"></span>
+              <span class="response-size" id="responseSize"></span>
+            </div>
+            <div class="response-tabs">
+              <button class="tab active" data-restab="responseResult">Result</button>
+            </div>
+            <div class="response-content" id="responseResult">
+              <pre id="responseOutput" class="response-output"><code>No response yet. Send a request to see results.</code></pre>
+            </div>
+          </div>
         </div>
       </div>
     </main>
@@ -367,26 +364,21 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 /* Main Layout */
 .main-layout{display:flex;flex:1;gap:12px;min-height:0;width:100%}
-.col-controls{display:flex;flex-direction:column;min-width:280px;max-width:320px;flex-shrink:0}
-.col-panels{display:flex;flex-direction:column;flex:1;gap:12px;min-width:0}
-.col-response{min-width:280px;max-width:400px;display:flex;flex-direction:column;flex-shrink:0}
-.col-response .response-output{flex:1;overflow:auto}
-.main-layout.layout-horizontal{flex-direction:row}
-.main-layout.layout-horizontal .col-controls{min-width:280px;max-width:280px}
-.main-layout.layout-horizontal .col-panels{flex-direction:row;flex:1}
-.main-layout.layout-horizontal .col-panels .request-panel,
-.main-layout.layout-horizontal .col-panels .response-panel{width:50%}
+.col-controls{min-width:280px;max-width:320px;flex-shrink:0}
+.col-request{flex:1;min-width:0;display:flex;flex-direction:column}
+.col-response{min-width:300px;max-width:400px;flex-shrink:0;display:flex;flex-direction:column}
+.col-response .response-panel{flex:1;display:flex;flex-direction:column;min-height:0}
+
+/* Vertical layout (stacked) */
+.main-layout.layout-vertical{flex-direction:column}
+.main-layout.layout-vertical .col-controls{max-width:100%;width:100%}
+.main-layout.layout-vertical .col-request{flex:none;min-height:200px}
+.main-layout.layout-vertical .col-response{flex:none;min-height:200px}
 
 /* Layout Toggle */
 .layout-toggle{padding:6px 10px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-dim);font-size:16px;transition:all .2s;display:flex;align-items:center;justify-content:center}
 .layout-toggle:hover{background:var(--surface-hover);border-color:var(--primary);color:var(--text)}
 .layout-icon{line-height:1}
-
-/* Panels Container */
-.panels-container{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
-.panels-container.layout-horizontal{flex-direction:row}
-.panels-container.layout-horizontal .request-panel,
-.panels-container.layout-horizontal .response-panel{width:50%}
 
 /* Request Bar */
 .request-bar{display:flex;gap:8px;align-items:center}
@@ -742,15 +734,18 @@ func getDefaultAppJS() string {
   // --- Toggle Layout ---
   function toggleLayout() {
     const container = document.getElementById('mainLayout');
-    container.classList.toggle('layout-horizontal');
-    localStorage.setItem('mvapi_layout', container.classList.contains('layout-horizontal') ? 'horizontal' : 'vertical');
+    const isVertical = container.classList.toggle('layout-vertical');
+    const btn = document.getElementById('layoutToggle');
+    btn.textContent = isVertical ? '⫿' : '⫾';
+    localStorage.setItem('mvapi_layout', isVertical ? 'vertical' : 'horizontal');
   }
   window.toggleLayout = toggleLayout;
 
   // Load saved layout preference
   const savedLayout = localStorage.getItem('mvapi_layout');
-  if (savedLayout === 'horizontal') {
-    document.getElementById('mainLayout').classList.add('layout-horizontal');
+  if (savedLayout === 'vertical') {
+    document.getElementById('mainLayout').classList.add('layout-vertical');
+    document.getElementById('layoutToggle').textContent = '⫿';
   }
 
   // --- Send Request ---
