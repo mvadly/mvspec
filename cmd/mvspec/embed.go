@@ -443,11 +443,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .response-status.s5xx{background:rgba(239,68,68,.15);color:#F87171}
 .response-time{color:var(--text-dim)}
 .response-size{color:var(--text-dim)}
-.response-content{flex:1;overflow:auto;min-height:0}
+.response-content{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column}
 .response-content.hidden{display:none}
 .response-content::-webkit-scrollbar{width:6px}
+.response-content::-webkit-scrollbar-track{background:transparent}
 .response-content::-webkit-scrollbar-thumb{background:var(--glass-border);border-radius:4px}
-.response-output{margin:0;padding:12px;font-family:var(--mono);font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--text-dim)}
+.response-output{flex:1;margin:0;padding:12px;font-family:var(--mono);font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--text-dim);max-height:100%;overflow-y:auto}
 .response-example{margin-bottom:16px;padding:12px;background:var(--glass);border-radius:var(--radius-sm);border:1px solid var(--glass-border)}
 .response-code{display:inline-block;padding:2px 8px;border-radius:var(--radius-sm);font-weight:600;font-size:12px;margin-right:8px}
 .response-code.s2xx{background:rgba(16,185,129,.15);color:#34D399}
