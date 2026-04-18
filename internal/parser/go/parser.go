@@ -1,6 +1,7 @@
 package goparser
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -64,6 +65,7 @@ type Response struct {
 	Code        int
 	Type        string
 	Description string
+	Example     string
 }
 
 type Operation struct {
@@ -424,6 +426,7 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 								Schema: generator.Schema{Ref: respRef},
 							},
 						},
+						Example: parseJSONExample(succ.Example),
 					}
 					if op.Responses == nil {
 						op.Responses = make(map[string]generator.Response)
@@ -443,6 +446,7 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 								Schema: generator.Schema{Ref: respRef},
 							},
 						},
+						Example: parseJSONExample(fail.Example),
 					}
 					if op.Responses == nil {
 						op.Responses = make(map[string]generator.Response)
@@ -516,6 +520,7 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 												Schema: generator.Schema{Ref: respRef},
 											},
 										},
+										Example: parseJSONExample(succ.Example),
 									}
 									if op.Responses == nil {
 										op.Responses = make(map[string]generator.Response)
@@ -535,6 +540,7 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 												Schema: generator.Schema{Ref: respRef},
 											},
 										},
+										Example: parseJSONExample(fail.Example),
 									}
 									if op.Responses == nil {
 										op.Responses = make(map[string]generator.Response)
@@ -609,11 +615,20 @@ func parseResponse(s string, success bool) *Response {
 		fmt.Sscanf(parts[0], "%d", &code)
 	}
 
-	return &Response{
+	resp := &Response{
 		Code:        code,
 		Type:        parts[1],
 		Description: strings.Join(parts[2:], " "),
 	}
+
+	desc := resp.Description
+	lastBrace := strings.LastIndex(desc, "{")
+	if lastBrace > 0 && strings.HasSuffix(desc, "}") {
+		resp.Description = strings.TrimSpace(desc[:lastBrace])
+		resp.Example = strings.TrimSpace(desc[lastBrace:])
+	}
+
+	return resp
 }
 
 func typeToString(expr ast.Expr) string {
@@ -675,4 +690,15 @@ func extractMethodFromHandler(handler string) string {
 
 func containsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
+
+func parseJSONExample(jsonStr string) interface{} {
+	if jsonStr == "" {
+		return nil
+	}
+	var result interface{}
+	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+		return nil
+	}
+	return result
 }

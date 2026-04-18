@@ -84,6 +84,7 @@ type Response struct {
 	Description string               `json:"description"`
 	Headers     map[string]Parameter `json:"headers,omitempty"`
 	Content     map[string]MediaType `json:"content,omitempty"`
+	Example     interface{}          `json:"example,omitempty"`
 }
 
 func Write(filename string, spec *OpenAPISpec) error {
