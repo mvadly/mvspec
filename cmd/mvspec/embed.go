@@ -839,22 +839,38 @@ func getDefaultAppJS() string {
     responseTime.textContent = time + " ms";
     responseSize.textContent = formatSize(size);
 
-    // Build result content with curl and response
+    // Build result content with curl, response, and headers
     let resultHTML = '<div class="result-section">';
     resultHTML += '<div class="example-label">Curl:</div>';
     resultHTML += '<pre class="example-json curl-command">' + escapeHTML(curl) + '</pre>';
     resultHTML += '</div>';
 
+    // Add Request Headers section
+    const headerPairs = getKVPairs("headersEditor");
+    if (headerPairs.length > 0) {
+      resultHTML += '<div class="result-section">';
+      resultHTML += '<div class="example-label">Request Headers:</div>';
+      let reqHeadersText = "";
+      for (const h of headerPairs) {
+        if (h.key) reqHeadersText += substituteEnv(h.key) + ": " + substituteEnv(h.value) + "\n";
+      }
+      resultHTML += '<pre class="example-json">' + escapeHTML(reqHeadersText) + '</pre>';
+      resultHTML += '</div>';
+    }
+
+    // Add Response Headers section
+    if (headers) {
+      resultHTML += '<div class="result-section">';
+      resultHTML += '<div class="example-label">Response Headers:</div>';
+      let respHeadersText = "";
+      headers.forEach((v, k) => { respHeadersText += k + ": " + v + "\n"; });
+      resultHTML += '<pre class="example-json">' + escapeHTML(respHeadersText) + '</pre>';
+      resultHTML += '</div>';
+    }
+
+    // Add Response Body
     resultHTML += '<div class="result-section">';
     resultHTML += '<div class="example-label">Response:</div>';
-    // Try to format as JSON
-    let formatted;
-    try {
-      const parsed = JSON.parse(body);
-      formatted = syntaxHighlight(JSON.stringify(parsed, null, 2));
-    } catch(e) {
-      formatted = escapeHTML(body);
-    }
     resultHTML += '<pre class="example-json">' + formatted + '</pre>';
     resultHTML += '</div>';
 
