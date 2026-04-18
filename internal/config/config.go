@@ -8,14 +8,20 @@ import (
 )
 
 type Config struct {
-	Title       string   `yaml:"title"`
-	Version     string   `yaml:"version"`
-	Description string   `yaml:"description"`
-	Host        string   `yaml:"host"`
-	BasePath    string   `yaml:"basePath"`
-	Output      string   `yaml:"output"`
-	Exclude     []string `yaml:"exclude"`
-	ParseTypes  bool     `yaml:"parseTypes"`
+	Title       string        `yaml:"title"`
+	Version     string        `yaml:"version"`
+	Description string        `yaml:"description"`
+	Host        string        `yaml:"host"`
+	BasePath    string        `yaml:"basePath"`
+	Output      string        `yaml:"output"`
+	Exclude     []string      `yaml:"exclude"`
+	ParseTypes  bool          `yaml:"parseTypes"`
+	Servers     []ServerConfig `yaml:"servers"`
+}
+
+type ServerConfig struct {
+	URL         string `yaml:"url"`
+	Description string `yaml:"description"`
 }
 
 func Load(path string) (*Config, error) {

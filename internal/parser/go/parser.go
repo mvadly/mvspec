@@ -332,13 +332,26 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 			Version:     p.cfg.Version,
 			Description: p.cfg.Description,
 		},
-		Servers: []generator.Server{
-			{URL: p.cfg.Host + p.cfg.BasePath},
-		},
 		Paths: make(map[string]map[string]generator.Operation),
 		Components: generator.Components{
 			Schemas: make(map[string]generator.Schema),
 		},
+	}
+
+	// Use servers from config if defined, otherwise fallback to Host+BasePath
+	if len(p.cfg.Servers) > 0 {
+		servers := make([]generator.Server, len(p.cfg.Servers))
+		for i, s := range p.cfg.Servers {
+			servers[i] = generator.Server{
+				URL:         s.URL,
+				Description: s.Description,
+			}
+		}
+		spec.Servers = servers
+	} else if p.cfg.Host != "" {
+		spec.Servers = []generator.Server{
+			{URL: p.cfg.Host + p.cfg.BasePath},
+		}
 	}
 
 	for _, route := range p.routes {
