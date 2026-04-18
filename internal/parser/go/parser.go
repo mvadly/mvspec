@@ -633,44 +633,38 @@ func parseParam(s string) *Param {
 }
 
 func parseResponse(s string, success bool) *Response {
-	parts := strings.Fields(s)
-	if len(parts) < 3 {
+	// Use regex to properly parse the annotation
+	// Format: status_code {object} type "description" {response} request:{request}
+	re := regexp.MustCompile(`^(\d+)\s+\{object\}\s+(\S+)\s+"([^"]+)"\s*(\{[^}]+\})?\s*(request:\{[^}]*\})?`)
+	matches := re.FindStringSubmatch(s)
+
+	if len(matches) < 3 {
 		return nil
 	}
 
 	code := 200
 	if !success {
-		fmt.Sscanf(parts[0], "%d", &code)
+		fmt.Sscanf(matches[1], "%d", &code)
 	}
 
-	fullDesc := strings.Join(parts[2:], " ")
-	desc := fullDesc
+	responseExample := ""
+	if len(matches) >= 5 && matches[4] != "" {
+		responseExample = matches[4]
+	}
 
-	var responseExample string
-	var requestExample string
-
-	// Extract request example: request:{...}
-	if idx := strings.Index(fullDesc, "request:{"); idx > 0 {
-		reqPart := fullDesc[idx:]
-		reqStart := strings.Index(reqPart, "{")
-		reqEnd := strings.LastIndex(reqPart, "}")
-		if reqStart >= 0 && reqEnd > reqStart {
-			requestExample = strings.TrimSpace(reqPart[reqStart+1 : reqEnd])
+	requestExample := ""
+	if len(matches) >= 6 && matches[5] != "" {
+		// Extract JSON from request:{...}
+		reqMatch := regexp.MustCompile(`request:(\{[^}]+\})`).FindStringSubmatch(matches[5])
+		if len(reqMatch) >= 2 {
+			requestExample = reqMatch[1]
 		}
-		desc = fullDesc[:idx]
-	}
-
-	// Extract response example: {...} at the end
-	lastBrace := strings.LastIndex(desc, "{")
-	if lastBrace > 0 && strings.HasSuffix(desc, "}") {
-		responseExample = strings.TrimSpace(desc[lastBrace:])
-		desc = strings.TrimSpace(desc[:lastBrace])
 	}
 
 	return &Response{
 		Code:           code,
-		Type:           parts[1],
-		Description:    desc,
+		Type:           matches[2],
+		Description:    matches[3],
 		Example:        responseExample,
 		RequestExample: requestExample,
 	}
