@@ -683,9 +683,6 @@ func parseResponse(s string, success bool) *Response {
 	}
 }
 
-	return resp
-}
-
 func typeToString(expr ast.Expr) string {
 	switch t := expr.(type) {
 	case *ast.Ident:

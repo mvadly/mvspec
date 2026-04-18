@@ -105,6 +105,27 @@ This produces:
 }
 ```
 
+### Response Examples
+
+Add inline JSON examples to `@Success` and `@Failure` annotations:
+
+```go
+// @Success    200 {object} UserResponse "Success" {"id":1,"name":"John","email":"john@example.com"}
+// @Failure    400 {object} Error "Bad request" {"code":"99","message":"Invalid input"}
+```
+
+### Request + Response Examples
+
+Add both request and response examples for each status code using `request:{...}`:
+
+```go
+// @Success    200 {object} Response "Login successful" {"responseCode":"00","responseMessage":"Success"} request:{"username":"john","password":"123"}
+// @Failure    400 {object} Response "Invalid credentials" {"responseCode":"01","responseMessage":"Wrong password"} request:{"username":"john","password":"wrong"}
+// @Failure    500 {object} Response "Server error" {"responseCode":"99","responseMessage":"Error"} request:{"username":"john","password":"123"}
+```
+
+**Format:** `status_code {object} Type "description" {response_json} request:{request_json}`
+
 ### Global annotations (in main.go or entry file)
 
 ```go
