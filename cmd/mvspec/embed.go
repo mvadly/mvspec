@@ -186,8 +186,15 @@ func getDefaultIndexHTML() string {
 <body>
   <div class="app">
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
+        <button id="sidebarToggle" class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <line x1="3" y1="4" x2="13" y2="4"></line>
+            <line x1="3" y1="8" x2="13" y2="8"></line>
+            <line x1="3" y1="12" x2="13" y2="12"></line>
+          </svg>
+        </button>
         <h1 class="logo">MV<span>API</span></h1>
         <button class="env-btn" id="envBtn" title="Environment Variables">⚙</button>
       </div>
@@ -379,7 +386,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .app{display:flex;height:100vh}
 
 /* Sidebar */
-.sidebar{width:280px;min-width:280px;background:rgba(15,23,42,.92);border-right:1px solid var(--glass-border);display:flex;flex-direction:column;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.sidebar{width:280px;min-width:280px;background:rgba(15,23,42,.92);border-right:1px solid var(--glass-border);display:flex;flex-direction:column;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:width .3s,margin .3s}
+.sidebar.hidden{width:0;min-width:0;margin-left:-280px;overflow:hidden;border:none}
+.sidebar-toggle{padding:6px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-dim);transition:all .2s;display:flex;align-items:center;justify-content:center}
+.sidebar-toggle:hover{background:var(--surface-hover);color:var(--primary)}
 .sidebar-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px}
 .logo{font-size:18px;font-weight:700;color:var(--primary);letter-spacing:1px}
 .logo span{color:var(--text)}
@@ -870,6 +880,14 @@ func getDefaultAppJS(cfg *config.Config) string {
   }
   window.toggleLayout = toggleLayout;
 
+  // --- Toggle Sidebar ---
+  function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('hidden');
+    localStorage.setItem('mvapi_sidebar', sidebar.classList.contains('hidden') ? 'hidden' : 'visible');
+  }
+  window.toggleSidebar = toggleSidebar;
+
   // Load saved layout preference
   const savedLayout = localStorage.getItem('mvapi_panels_layout');
   const btn = document.getElementById('layoutToggle');
@@ -878,6 +896,12 @@ func getDefaultAppJS(cfg *config.Config) string {
     btn.setAttribute('data-layout', 'vertical');
   } else {
     btn.setAttribute('data-layout', 'horizontal');
+  }
+
+  // Load saved sidebar preference
+  const savedSidebar = localStorage.getItem('mvapi_sidebar');
+  if (savedSidebar === 'hidden') {
+    document.getElementById('sidebar').classList.add('hidden');
   }
 
   // --- Send Request ---
