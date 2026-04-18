@@ -182,6 +182,8 @@ func getDefaultIndexHTML() string {
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
 </head>
 <body>
   <div class="app">
@@ -303,7 +305,7 @@ func getDefaultIndexHTML() string {
               <button class="add-row-btn" data-editor="headersEditor">+ Add Header</button>
             </div>
             <div class="tab-content hidden" id="bodyTab">
-              <textarea id="bodyEditor" class="body-editor" placeholder='{ "key": "value" }'></textarea>
+              <div id="bodyEditor" class="body-editor" placeholder='{ "key": "value" }'></div>
             </div>
             <div class="tab-content hidden" id="examplesTab">
               <pre id="requestExamplesOutput" class="response-output"></pre>
@@ -365,6 +367,8 @@ func getDefaultIndexHTML() string {
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>`
@@ -493,8 +497,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .kv-remove:hover{color:var(--danger);background:rgba(239,68,68,.1)}
 .add-row-btn{background:none;border:1px dashed var(--glass-border);color:var(--text-dim);padding:6px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;margin-top:6px;transition:all .2s;width:100%}
 .add-row-btn:hover{border-color:var(--primary);color:var(--primary)}
-.body-editor{width:100%;min-height:120px;padding:10px;background:rgba(15,23,42,.6);border:1px solid var(--glass-border);border-radius:var(--radius-sm);color:var(--text);font-family:var(--mono);font-size:13px;resize:vertical;outline:none;transition:border-color .2s}
-.body-editor:focus{border-color:var(--primary)}
+.body-editor{min-height:150px;height:200px}
+.body-editor .CodeMirror{height:100%;font-family:var(--mono);font-size:13px;border-radius:var(--radius-sm);background:rgba(15,23,42,.6);color:var(--text)}
+.body-editor .CodeMirror-cursor{border-left:1px solid var(--primary)}
+.body-editor .CodeMirror-selected{background:var(--glass-border)}
+.body-editor .CodeMirror-gutters{background:rgba(15,23,42,.8);border-right:1px solid var(--glass-border)}
+.body-editor .CodeMirror-linenumber{padding:0 8px;color:var(--text-muted)}
+.body-editor .cm-string{color:#CE9178}
+.body-editor .cm-number{color:#B5CEA8}
+.body-editor .cm-key{color:#9CDCFE}
+.body-editor .cm-property{color:#9CDCFE}
+.body-editor .cm-atom{color:#569CD6}
+.body-editor .cm-bool{color:#569CD6}
+.body-editor .cm-null{color:#569CD6}
 
 /* Response Panel */
 .response-panel{flex:1;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);padding:12px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;overflow:hidden;min-height:0}
@@ -601,6 +616,7 @@ func getDefaultAppJS(cfg *config.Config) string {
   let defaultEnvVars = ` + defaultEnvVars + `;
   let envVars = JSON.parse(localStorage.getItem("mvapi_env") || JSON.stringify(defaultEnvVars));
   let history = JSON.parse(localStorage.getItem("mvapi_history") || "[]");
+  let bodyEditorInstance = null;
 
   // --- DOM refs ---
   const $ = (s) => document.querySelector(s);
@@ -636,6 +652,7 @@ func getDefaultAppJS(cfg *config.Config) string {
   setupKVEditors();
   setupEnvModal();
   setupAuth();
+  setupBodyEditor();
 
   sendBtn.addEventListener("click", sendRequest);
   urlInput.addEventListener("keydown", (e) => { if(e.key==="Enter") sendRequest(); });
@@ -780,11 +797,11 @@ func getDefaultAppJS(cfg *config.Config) string {
     }
 
     // Clear body
-    bodyEditor.value = "";
+    setBodyEditorValue("");
     if (entry.op.requestBody && entry.op.requestBody.content) {
       const jsonContent = entry.op.requestBody.content["application/json"];
       if (jsonContent && jsonContent.schema) {
-        bodyEditor.value = buildExampleBody(jsonContent.schema);
+        setBodyEditorValue(buildExampleBody(jsonContent.schema));
       }
     }
 
@@ -879,7 +896,7 @@ func getDefaultAppJS(cfg *config.Config) string {
     if (!currentEntry || !currentEntry.op.responses || !currentEntry.op.responses[code]) return;
     const resp = currentEntry.op.responses[code];
     if (resp.requestExample !== undefined) {
-      bodyEditor.value = JSON.stringify(resp.requestExample, null, 2);
+      setBodyEditorValue(JSON.stringify(resp.requestExample, null, 2));
       // Switch to Body tab
       document.querySelector('.request-panel .tabs .tab[data-tab="body"]').click();
     }
@@ -968,7 +985,7 @@ func getDefaultAppJS(cfg *config.Config) string {
     for (const [key, value] of Object.entries(headers)) {
       curl += " -H \"" + key + ": " + value + "\"";
     }
-    const body = substituteEnv(bodyEditor.value.trim());
+    const body = substituteEnv(getBodyEditorValue().trim());
     if (body && method !== "GET" && method !== "HEAD") {
       curl += " -d '" + body.replace(/'/g, "'\\''") + "'";
     }
@@ -1222,6 +1239,44 @@ func getDefaultAppJS(cfg *config.Config) string {
       updateAuthFields();
     }
   });
+
+  // --- Body Editor (CodeMirror) ---
+  function setupBodyEditor() {
+    const bodyEditorEl = document.getElementById('bodyEditor');
+    if (!bodyEditorEl) return;
+    
+    bodyEditorInstance = CodeMirror(bodyEditorEl, {
+      mode: "application/json",
+      theme: "dracula",
+      lineNumbers: true,
+      lineWrapping: true,
+      indentUnit: 2,
+      tabSize: 2,
+      styleActiveLine: true,
+      matchBrackets: true,
+      placeholder: '{ "key": "value" }'
+    });
+    
+    // Get value for sending request
+    bodyEditorInstance.on('change', function() {
+      // Value is automatically available via bodyEditorInstance.getValue()
+    });
+  }
+  
+  // Helper to get body editor value
+  function getBodyEditorValue() {
+    if (bodyEditorInstance) {
+      return bodyEditorInstance.getValue();
+    }
+    return "";
+  }
+  
+  // Helper to set body editor value
+  function setBodyEditorValue(value) {
+    if (bodyEditorInstance) {
+      bodyEditorInstance.setValue(value || "");
+    }
+  }
 
 // --- Environment Variables ---
   function setupEnvModal() {

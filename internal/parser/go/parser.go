@@ -646,16 +646,12 @@ func parseParam(s string) *Param {
 }
 
 func parseResponse(s string, success bool) *Response {
-	// Trim leading/trailing spaces
 	s = strings.TrimSpace(s)
 
-	// Use regex to properly parse the annotation
-	// Format: status_code {object} type "description" {response} request:{request}
-	re := regexp.MustCompile(`^(\d+)\s+\{object\}\s+(\S+)\s+"([^"]+)"(?:\s*(\{[^}]+\}))?(?:\s*(request:\{[^}]*\}))?`)
+	re := regexp.MustCompile(`^(\d+)\s*(?:\{object\})?\s*(\S+)\s*"([^"]+)"`)
 	matches := re.FindStringSubmatch(s)
 
 	if len(matches) < 4 {
-		// Fallback to old parsing
 		parts := strings.Fields(s)
 		if len(parts) < 3 {
 			return nil
@@ -676,17 +672,19 @@ func parseResponse(s string, success bool) *Response {
 		fmt.Sscanf(matches[1], "%d", &code)
 	}
 
+	remainder := s[len(matches[0]):]
 	responseExample := ""
-	if len(matches) >= 5 && matches[4] != "" {
-		responseExample = matches[4]
-	}
-
 	requestExample := ""
-	if len(matches) >= 6 && matches[5] != "" {
-		reqMatch := regexp.MustCompile(`request:(\{[^}]+\})`).FindStringSubmatch(matches[5])
-		if len(reqMatch) >= 2 {
-			requestExample = reqMatch[1]
+
+	if idx := strings.Index(remainder, "request:"); idx != -1 {
+		responseExample = strings.TrimSpace(remainder[:idx])
+		reqPart := strings.TrimSpace(remainder[idx+8:])
+		if idx := strings.Index(reqPart, "//"); idx > 0 {
+			reqPart = strings.TrimSpace(reqPart[:idx])
 		}
+		requestExample = reqPart
+	} else {
+		responseExample = strings.TrimSpace(remainder)
 	}
 
 	return &Response{
