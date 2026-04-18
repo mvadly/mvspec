@@ -633,13 +633,29 @@ func parseParam(s string) *Param {
 }
 
 func parseResponse(s string, success bool) *Response {
+	// Trim leading/trailing spaces
+	s = strings.TrimSpace(s)
+
 	// Use regex to properly parse the annotation
 	// Format: status_code {object} type "description" {response} request:{request}
-	re := regexp.MustCompile(`^(\d+)\s+\{object\}\s+(\S+)\s+"([^"]+)"\s*(\{[^}]+\})?\s*(request:\{[^}]*\})?`)
+	re := regexp.MustCompile(`^(\d+)\s+\{object\}\s+(\S+)\s+"([^"]+)"(?:\s*(\{[^}]+\}))?(?:\s*(request:\{[^}]*\}))?`)
 	matches := re.FindStringSubmatch(s)
 
-	if len(matches) < 3 {
-		return nil
+	if len(matches) < 4 {
+		// Fallback to old parsing
+		parts := strings.Fields(s)
+		if len(parts) < 3 {
+			return nil
+		}
+		code := 200
+		if !success {
+			fmt.Sscanf(parts[0], "%d", &code)
+		}
+		return &Response{
+			Code:        code,
+			Type:        parts[1],
+			Description: strings.Join(parts[2:], " "),
+		}
 	}
 
 	code := 200
@@ -654,7 +670,6 @@ func parseResponse(s string, success bool) *Response {
 
 	requestExample := ""
 	if len(matches) >= 6 && matches[5] != "" {
-		// Extract JSON from request:{...}
 		reqMatch := regexp.MustCompile(`request:(\{[^}]+\})`).FindStringSubmatch(matches[5])
 		if len(reqMatch) >= 2 {
 			requestExample = reqMatch[1]
