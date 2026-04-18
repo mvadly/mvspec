@@ -390,8 +390,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 /* Vertical layout (stacked) */
 .panels-layout.layout-vertical{flex-direction:column}
-.panels-layout.layout-vertical .col-request{flex:none;min-height:200px}
-.panels-layout.layout-vertical .col-response{flex:none;min-height:200px}
+.panels-layout.layout-vertical .col-request{flex:none;min-height:150px;max-height:40vh;overflow:hidden}
+.panels-layout.layout-vertical .col-response{flex:none;min-height:150px;max-height:40vh}
+.panels-layout.layout-vertical .request-panel{height:100%;overflow-y:auto}
 
 /* Layout Toggle */
 .layout-toggle{padding:6px 10px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-dim);font-size:16px;transition:all .2s;display:flex;align-items:center;justify-content:center}
