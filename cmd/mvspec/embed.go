@@ -43,8 +43,8 @@ func runEmbed() error {
 		return err
 	}
 
-	fmt.Printf("\nUsage: r.GET(\"/mvdocs\", gin.WrapF(mvdocs.MvHandler()))\n")
-	fmt.Printf("Access: http://localhost:8080/mvdocs\n")
+	fmt.Printf("\nUsage: r.GET(\"/mvdocs/*path\", gin.WrapH(mvdocs.MvHandler()))\n")
+	fmt.Printf("Access: http://localhost:<port>/mvdocs\n")
 
 	return nil
 }
@@ -104,11 +104,12 @@ func getDocsContent() string {
 		"}\n" +
 		"\n" +
 		"func serve(w http.ResponseWriter, r *http.Request) {\n" +
-		"\tpath := strings.TrimSuffix(r.URL.Path, \"/\")\n" +
+		"\tpath := r.URL.Path\n" +
 		"\n" +
-		"\tfilePath := strings.TrimPrefix(path, \"/mvdocs/\")\n" +
+		"\tfilePath := strings.TrimPrefix(path, \"/mvdocs\")\n" +
+		"\tfilePath = strings.TrimPrefix(filePath, \"/\")\n" +
 		"\n" +
-		"\tif filePath == \"\" || filePath == \"index.html\" || path == \"/mvdocs\" {\n" +
+		"\tif filePath == \"\" || filePath == \"index.html\" {\n" +
 		"\t\tw.Header().Set(\"Content-Type\", \"text/html\")\n" +
 		"\t\tserveEmbedded(w, \"index.html\")\n" +
 		"\t\treturn\n" +

@@ -150,11 +150,7 @@ func (p *Parser) scanFiles() error {
 }
 
 func (p *Parser) parseRoutes() error {
-	for path, f := range p.files {
-		if !strings.Contains(path, "routes") {
-			continue
-		}
-
+	for _, f := range p.files {
 		for _, decl := range f.Decls {
 			funcDecl, ok := decl.(*ast.FuncDecl)
 			if !ok {
@@ -214,11 +210,7 @@ func (p *Parser) parseRoutes() error {
 func (p *Parser) parseAnnotations() error {
 	annoPattern := regexp.MustCompile(`@(\w+)\s+(.*)`)
 
-	for path, f := range p.files {
-		if !strings.Contains(path, "handler") {
-			continue
-		}
-
+	for _, f := range p.files {
 		for _, decl := range f.Decls {
 			funcDecl, ok := decl.(*ast.FuncDecl)
 			if !ok {
@@ -285,11 +277,7 @@ func (p *Parser) parseAnnotations() error {
 }
 
 func (p *Parser) parseTypes() error {
-	for path, f := range p.files {
-		if !strings.Contains(path, "models") && !strings.Contains(path, "entity") {
-			continue
-		}
-
+	for _, f := range p.files {
 		for _, decl := range f.Decls {
 			genDecl, ok := decl.(*ast.GenDecl)
 			if !ok || genDecl.Tok != token.TYPE {
@@ -362,8 +350,23 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 
 		var op generator.Operation
 		for _, o := range p.operas {
+			matched := false
+			var anno *Annotation
+
 			if o.Handler == route.Handler {
-				anno := o.Annotation
+				matched = true
+				anno = o.Annotation
+			}
+
+			if !matched && o.Annotation.Router != "" {
+				routerPath := extractPathFromRouter(o.Annotation.Router)
+				if routerPath == fullPath {
+					matched = true
+					anno = o.Annotation
+				}
+			}
+
+			if matched && anno != nil {
 				op.Summary = anno.Summary
 				op.Description = anno.Description
 				op.Tags = anno.Tags
@@ -443,7 +446,99 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 		}
 
 		if op.Summary == "" {
-			op.Summary = route.Handler
+			if route.Handler != "" {
+				op.Summary = route.Handler
+			} else {
+				for _, o := range p.operas {
+					if o.Annotation.Router != "" {
+						routerParts := strings.Fields(o.Annotation.Router)
+						if len(routerParts) >= 2 {
+							routerPath := routerParts[0]
+							if !strings.HasPrefix(routerPath, "/") {
+								routerPath = "/" + routerPath
+							}
+							if routerPath == fullPath {
+								anno := o.Annotation
+								op.Summary = anno.Summary
+								op.Description = anno.Description
+								op.Tags = anno.Tags
+
+								for _, param := range anno.Params {
+									if param.In == "body" || param.In == "formData" {
+										schemaRef := param.Type
+										if !strings.HasPrefix(schemaRef, "#/") {
+											if strings.HasPrefix(schemaRef, "{") {
+												schemaRef = strings.Trim(schemaRef, "{}")
+											}
+											schemaRef = "#/components/schemas/" + schemaRef
+										}
+										schemaRef = strings.ReplaceAll(schemaRef, "response.", "")
+										schemaRef = strings.ReplaceAll(schemaRef, "models.", "")
+										schemaRef = strings.ReplaceAll(schemaRef, "util.", "")
+										op.RequestBody = &generator.RequestBody{
+											Description: param.Description,
+											Required:    param.Required,
+											Content: map[string]generator.MediaType{
+												"application/json": {
+													Schema: generator.Schema{Ref: schemaRef},
+												},
+											},
+										}
+										continue
+									}
+									pm := generator.Parameter{
+										Name:        param.Name,
+										In:          param.In,
+										Required:    param.Required,
+										Description: param.Description,
+										Schema:      generator.Schema{Type: param.Type},
+									}
+									op.Parameters = append(op.Parameters, pm)
+								}
+
+								for _, succ := range anno.Success {
+									respRef := succ.Type
+									respRef = strings.ReplaceAll(respRef, "response.", "")
+									respRef = strings.ReplaceAll(respRef, "models.", "")
+									respRef = strings.ReplaceAll(respRef, "util.", "")
+									resp := generator.Response{
+										Description: succ.Description,
+										Content: map[string]generator.MediaType{
+											"application/json": {
+												Schema: generator.Schema{Ref: respRef},
+											},
+										},
+									}
+									if op.Responses == nil {
+										op.Responses = make(map[string]generator.Response)
+									}
+									op.Responses[fmt.Sprintf("%d", succ.Code)] = resp
+								}
+
+								for _, fail := range anno.Failure {
+									respRef := fail.Type
+									respRef = strings.ReplaceAll(respRef, "response.", "")
+									respRef = strings.ReplaceAll(respRef, "models.", "")
+									respRef = strings.ReplaceAll(respRef, "util.", "")
+									resp := generator.Response{
+										Description: fail.Description,
+										Content: map[string]generator.MediaType{
+											"application/json": {
+												Schema: generator.Schema{Ref: respRef},
+											},
+										},
+									}
+									if op.Responses == nil {
+										op.Responses = make(map[string]generator.Response)
+									}
+									op.Responses[fmt.Sprintf("%d", fail.Code)] = resp
+								}
+								break
+							}
+						}
+					}
+				}
+			}
 		}
 
 		spec.Paths[fullPath][strings.ToLower(route.Method)] = op
@@ -543,4 +638,16 @@ func inferJSONType(goType string) string {
 	default:
 		return "object"
 	}
+}
+
+func extractPathFromRouter(router string) string {
+	parts := strings.Fields(router)
+	if len(parts) >= 1 {
+		path := parts[0]
+		if !strings.HasPrefix(path, "/") {
+			path = "/" + path
+		}
+		return path
+	}
+	return ""
 }

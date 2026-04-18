@@ -64,6 +64,12 @@ func main() {
 				os.Exit(1)
 			}
 			return
+		case "remove":
+			if err := runRemove(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
 		}
 	}
 
@@ -146,4 +152,28 @@ func splitCSV(s string) []string {
 		result = append(result, strings.TrimSpace(part))
 	}
 	return result
+}
+
+func runRemove() error {
+	removed := false
+
+	if err := os.Remove("mv-spec.json"); err == nil {
+		fmt.Println("Removed mv-spec.json")
+		removed = true
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("remove mv-spec.json: %w", err)
+	}
+
+	if err := os.RemoveAll("mv-docs"); err == nil {
+		fmt.Println("Removed mv-docs/")
+		removed = true
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("remove mv-docs: %w", err)
+	}
+
+	if !removed {
+		fmt.Println("No generated files to remove")
+	}
+
+	return nil
 }

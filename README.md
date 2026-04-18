@@ -46,6 +46,7 @@ mvspec version    # Print version
 mvspec fmt         # Format annotations in code
 mvspec validate   # Validate without generating
 mvspec embed      # Generate embedded docs handler and UI
+mvspec remove     # Remove generated files (mv-spec.json, mv-docs/)
 ```
 
 ## Configuration
@@ -157,7 +158,7 @@ This creates:
 import "your-module/mv-docs"
 
 // Add route
-r.GET("/mvdocs", gin.WrapF(mvdocs.MvHandler()))
+r.GET("/mvdocs/*path", gin.WrapH(mvdocs.MvHandler()))
 ```
 
 The UI includes:
