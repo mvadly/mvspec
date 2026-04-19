@@ -906,7 +906,32 @@ func getDefaultAppJS(cfg *config.Config) string {
         formDataEditor.classList.remove('hidden');
         const formDataEl = document.getElementById('formDataFields');
         formDataEl.innerHTML = '';
-        addKVRow(formDataEl, '', '');
+        
+        // Get schema from spec and populate form fields
+        if (entry.op.requestBody && entry.op.requestBody.content && entry.op.requestBody.content["multipart/form-data"]) {
+          const schemaRef = entry.op.requestBody.content["multipart/form-data"].schema;
+          if (schemaRef && schemaRef.$ref) {
+            const refName = schemaRef.$ref.split('/').pop();
+            const schema = spec.components && spec.components.schemas && spec.components.schemas[refName];
+            if (schema && schema.properties) {
+              // Add key-value rows for each property
+              for (const [propName, propSchema] of Object.entries(schema.properties)) {
+                addKVRow(formDataEl, propName, '');
+              }
+              if (Object.keys(schema.properties).length > 0) {
+                // Already populated, done
+              } else {
+                addKVRow(formDataEl, '', '');
+              }
+            } else {
+              addKVRow(formDataEl, '', '');
+            }
+          } else {
+            addKVRow(formDataEl, '', '');
+          }
+        } else {
+          addKVRow(formDataEl, '', '');
+        }
       } else if (hasFormUrlEncoded) {
         detectedType = 'form';
         formBodyEditor.classList.remove('hidden');
