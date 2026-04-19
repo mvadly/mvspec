@@ -158,6 +158,36 @@ This produces:
 }
 ```
 
+### Form Data (multipart/form-data)
+
+`@Param` with `formData` generates `multipart/form-data` content-type:
+
+```go
+// @Param body formData UploadRequest true "Upload form"
+```
+
+This produces:
+```json
+"requestBody": {
+  "description": "Upload form",
+  "required": true,
+  "content": {
+    "multipart/form-data": {
+      "schema": { "$ref": "#/components/schemas/UploadRequest" }
+    }
+  }
+}
+```
+
+For individual form fields:
+
+```go
+// @Param name formData string true "Name"
+// @Param file formData file true "File to upload"
+```
+
+This produces formData parameters in the operation.
+
 ### Response Examples
 
 Add inline JSON examples to `@Success` and `@Failure` annotations:
@@ -311,6 +341,23 @@ Output `mv-spec.json`:
   }
 }
 ```
+
+## Recent Changes
+
+### v1.x Updates
+
+- **Form Data Support**: Parser now correctly handles `@Param body formData` and `@Param name formData` annotations to generate `multipart/form-data` content-type
+- **Request/Response Examples**: Inline JSON examples in annotations are parsed and displayed in the UI
+- **Content-Type Auto-Detection**: UI automatically detects content-type from endpoint spec and shows appropriate body editor (JSON, form-urlencoded, form-data)
+- **Form Data File Upload**: UI shows file input for multipart/form-data endpoints
+
+### UI Features
+
+- Postman-like interface with glassmorphism theme
+- Environment variables support
+- Multiple server URLs support
+- Request/Response examples display
+- Form editor for form-urlencoded and multipart/form-data
 
 ## License
 
