@@ -890,21 +890,31 @@ func getDefaultAppJS(cfg *config.Config) string {
     
     if (entry.op.requestBody && entry.op.requestBody.content) {
       const contentKeys = Object.keys(entry.op.requestBody.content);
-      if (contentKeys.includes('application/json')) {
+      const hasJson = contentKeys.includes('application/json');
+      const hasMultipart = contentKeys.some(k => k.includes('multipart'));
+      const hasFormUrlEncoded = contentKeys.includes('application/x-www-form-urlencoded');
+      
+      if (hasJson) {
         detectedType = 'json';
         jsonBodyEditor.classList.remove('hidden');
         const jsonContent = entry.op.requestBody.content["application/json"];
         if (jsonContent && jsonContent.schema) {
           setBodyEditorValue(buildExampleBody(jsonContent.schema));
         }
-      } else if (contentKeys.includes('multipart/form-data')) {
+      } else if (hasMultipart) {
         detectedType = 'form-data';
         formDataEditor.classList.remove('hidden');
         const formDataEl = document.getElementById('formDataFields');
         formDataEl.innerHTML = '';
         addKVRow(formDataEl, '', '');
-      } else if (contentKeys.includes('application/x-www-form-urlencoded')) {
+      } else if (hasFormUrlEncoded) {
         detectedType = 'form';
+        formBodyEditor.classList.remove('hidden');
+        const formEl = document.getElementById('formEditor');
+        formEl.innerHTML = '';
+        addKVRow(formEl, '', '');
+      } else {
+        // Fallback: show form editor
         formBodyEditor.classList.remove('hidden');
         const formEl = document.getElementById('formEditor');
         formEl.innerHTML = '';

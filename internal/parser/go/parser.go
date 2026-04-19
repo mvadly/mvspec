@@ -416,16 +416,7 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 				op.Summary = anno.Summary
 				op.Description = anno.Description
 				op.Tags = anno.Tags
-
-				// Check if any param is formData file
-				hasFormDataFile := false
-				for _, param := range anno.Params {
-					if param.In == "formData" && param.Type == "file" {
-						hasFormDataFile = true
-						break
-					}
-				}
-
+				
 				for _, param := range anno.Params {
 					if param.In == "body" || param.In == "formData" {
 						schemaRef := param.Type
@@ -441,7 +432,7 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 
 						// Determine content-type
 						contentType := "application/json"
-						if param.In == "formData" || hasFormDataFile {
+						if param.In == "formData" {
 							contentType = "multipart/form-data"
 						}
 
@@ -529,16 +520,7 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 								op.Summary = anno.Summary
 								op.Description = anno.Description
 								op.Tags = anno.Tags
-
-								// Check if any param is formData file
-								hasFormDataFile := false
-								for _, param := range anno.Params {
-									if param.In == "formData" && param.Type == "file" {
-										hasFormDataFile = true
-										break
-									}
-								}
-
+								
 								for _, param := range anno.Params {
 									if param.In == "body" || param.In == "formData" {
 										schemaRef := param.Type
@@ -552,9 +534,9 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 										schemaRef = strings.ReplaceAll(schemaRef, "models.", "")
 										schemaRef = strings.ReplaceAll(schemaRef, "util.", "")
 
-										// Determine content-type
-										contentType := "application/json"
-										if param.In == "formData" || hasFormDataFile {
+// Determine content-type
+						contentType := "application/json"
+						if param.In == "formData" {
 											contentType = "multipart/form-data"
 										}
 
