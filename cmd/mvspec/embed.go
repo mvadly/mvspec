@@ -921,8 +921,11 @@ func getDefaultAppJS(cfg *config.Config) string {
                 if (isFile && !fileFieldName) {
                   // First file field found - set the file input to use this name
                   fileFieldName = propName;
-                  const fileInputKey = formDataEditor.querySelector('#fileInput').parentElement.querySelector('.kv-key');
-                  if (fileInputKey) fileInputKey.value = propName;
+                  const fileInputRow = formDataEditor.querySelector('.file-input-row');
+                  if (fileInputRow) {
+                    const fileInputKey = fileInputRow.querySelector('.kv-key');
+                    if (fileInputKey) fileInputKey.value = propName;
+                  }
                   continue; // Skip adding kv-row for file fields
                 }
                 addKVRow(formDataEl, propName, '');

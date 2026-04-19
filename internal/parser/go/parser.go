@@ -636,29 +636,30 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 		}
 
 		for _, f := range t.Fields {
-			prop := generator.Schema{
-				Type: inferJSONType(f.Type),
+			// Determine which tag to use - prefer form tag
+			propTag := f.JSONTag
+			if f.FormTag != "" {
+				propTag = f.FormTag
 			}
-			// Detect file type
-			if strings.Contains(f.Type, "multipart.FileHeader") || f.Type == "file" {
+			
+			// Detect file type - check if type contains anything related to file or multipart
+			typeForCheck := f.Type
+			isFileType := strings.Contains(typeForCheck, "FileHeader") || 
+			               strings.Contains(typeForCheck, "multipart") || 
+			               strings.Contains(typeForCheck, "file")
+			
+			prop := generator.Schema{
+				Type: "object",  // Default for objects/arrays
+			}
+			if isFileType {
 				prop.Format = "binary"
 				prop.Type = "string"
+			} else if f.Type == "string" || f.Type == "int" || f.Type == "int64" || f.Type == "bool" || 
+			          f.Type == "float64" || f.Type == "uint" || f.Type == "uint64" {
+				// Simple types - use inferJSONType
+				prop.Type = inferJSONType(f.Type)
 			}
-			// Always add with JSON tag (for JSON content-type)
-			schema.Properties[f.JSONTag] = prop
-			// Add with form tag if different (for form-data content-type)
-			if f.FormTag != "" && f.FormTag != f.JSONTag {
-				formProp := generator.Schema{
-					Type:   inferJSONType(f.Type),
-					Format: prop.Format,
-				}
-				// Use type: string, format: binary for file fields in form-data
-				if strings.Contains(f.Type, "multipart.FileHeader") || f.Type == "file" {
-					formProp.Format = "binary"
-					formProp.Type = "string"
-				}
-				schema.Properties[f.FormTag] = formProp
-			}
+			schema.Properties[propTag] = prop
 		}
 
 		spec.Components.Schemas[name] = schema
@@ -752,11 +753,17 @@ func typeToString(expr ast.Expr) string {
 	case *ast.StarExpr:
 		return "*" + typeToString(t.X)
 	case *ast.ArrayType:
-		return "array"
+		return "array" + typeToString(t.Elt)
 	case *ast.MapType:
 		return "map"
 	case *ast.InterfaceType:
 		return "interface{}"
+	case *ast.SelectorExpr:
+		return t.Sel.Name
+	case *ast.IndexExpr:
+		return typeToString(t.X)
+	case *ast.IndexListExpr:
+		return typeToString(t.X)
 	default:
 		return "object"
 	}
@@ -772,7 +779,14 @@ func inferJSONType(goType string) string {
 		return "number"
 	case "bool":
 		return "boolean"
+	case "file", "*os.File":
+		return "string"
+	case "array":
+		return "object"
 	default:
+		if strings.Contains(goType, "FileHeader") || strings.Contains(goType, "multipart") {
+			return "string"
+		}
 		return "object"
 	}
 }
