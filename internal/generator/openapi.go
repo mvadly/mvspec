@@ -56,9 +56,11 @@ type Operation struct {
 	OperationId string                `json:"operationId,omitempty"`
 	Parameters  []Parameter           `json:"parameters,omitempty"`
 	RequestBody *RequestBody          `json:"requestBody,omitempty"`
-	Responses   map[string]Response   `json:"responses,omitempty"`
-	Security    []map[string][]string `json:"security,omitempty"`
-	Deprecated  bool                  `json:"deprecated,omitempty"`
+	Consumes   []string            `json:"consumes,omitempty"`
+	Produces  []string            `json:"produces,omitempty"`
+	Responses  map[string]Response  `json:"responses,omitempty"`
+	Security   []map[string][]string `json:"security,omitempty"`
+	Deprecated bool                  `json:"deprecated,omitempty"`
 }
 
 type Parameter struct {

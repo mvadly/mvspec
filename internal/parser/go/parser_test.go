@@ -48,6 +48,16 @@ func TestParseParamFormData(t *testing.T) {
 			},
 		},
 		{
+			input: "file formData file true File to upload",
+			expected: Param{
+				Name:        "file",
+				In:          "formData",
+				Type:        "file",
+				Required:    true,
+				Description: "File to upload",
+			},
+		},
+		{
 			input: "email formData string false Email",
 			expected: Param{
 				Name:        "email",

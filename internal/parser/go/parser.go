@@ -140,46 +140,65 @@ func (p *Parser) parseRoutes() error {
 				continue
 			}
 
-			var routeGrp string
+			groupMap := make(map[string]string)
 
 			ast.Inspect(funcDecl.Body, func(node ast.Node) bool {
-				call, ok := node.(*ast.CallExpr)
-				if !ok {
-					return true
-				}
-
-				sel, ok := call.Fun.(*ast.SelectorExpr)
-				if !ok {
-					return true
-				}
-
-				switch sel.Sel.Name {
-				case "Group":
-					if len(call.Args) > 0 {
-						if lit, ok := call.Args[0].(*ast.BasicLit); ok {
-							routeGrp = strings.Trim(lit.Value, `"`)
+				switch n := node.(type) {
+				case *ast.AssignStmt:
+					if len(n.Rhs) > 0 {
+						if call, ok := n.Rhs[0].(*ast.CallExpr); ok {
+							if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Group" {
+								if len(call.Args) > 0 {
+									if lit, ok := call.Args[0].(*ast.BasicLit); ok {
+										prefix := strings.Trim(lit.Value, `"`)
+										if len(n.Lhs) > 0 {
+											if ident, ok := n.Lhs[0].(*ast.Ident); ok {
+												groupMap[ident.Name] = prefix
+											}
+										}
+									}
+								}
+							}
 						}
 					}
-				case "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD":
-					if len(call.Args) >= 2 {
-						pathArg := ""
-						if lit, ok := call.Args[0].(*ast.BasicLit); ok {
-							pathArg = strings.Trim(lit.Value, `"`)
-						}
-						var handlerName string
-						if ident, ok := call.Args[1].(*ast.Ident); ok {
-							handlerName = ident.Name
-						} else if sel2, ok := call.Args[1].(*ast.SelectorExpr); ok {
-							handlerName = sel2.Sel.Name
-						}
+				case *ast.CallExpr:
+					sel, ok := n.Fun.(*ast.SelectorExpr)
+					if !ok {
+						return true
+					}
 
-						fullPath := routeGrp + pathArg
-						route := Route{
-							Path:    fullPath,
-							Method:  strings.ToUpper(sel.Sel.Name),
-							Handler: handlerName,
+					switch sel.Sel.Name {
+					case "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD":
+						if len(n.Args) >= 2 {
+							pathArg := ""
+							if lit, ok := n.Args[0].(*ast.BasicLit); ok {
+								pathArg = strings.Trim(lit.Value, `"`)
+							}
+							var handlerName string
+							if ident, ok := n.Args[1].(*ast.Ident); ok {
+								handlerName = ident.Name
+							} else if sel2, ok := n.Args[1].(*ast.SelectorExpr); ok {
+								handlerName = sel2.Sel.Name
+							}
+
+							var fullPath string
+							if ident, ok := sel.X.(*ast.Ident); ok {
+								if prefix, exists := groupMap[ident.Name]; exists {
+									fullPath = prefix + pathArg
+								} else {
+									fullPath = pathArg
+								}
+							} else {
+								fullPath = pathArg
+							}
+
+							route := Route{
+								Path:    fullPath,
+								Method:  strings.ToUpper(sel.Sel.Name),
+								Handler: handlerName,
+							}
+							p.routes = append(p.routes, route)
 						}
-						p.routes = append(p.routes, route)
 					}
 				}
 				return true
@@ -411,9 +430,25 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 				op.Summary = anno.Summary
 				op.Description = anno.Description
 				op.Tags = anno.Tags
-				
+
+				if anno.Accept != "" {
+					op.Consumes = strings.Split(anno.Accept, ",")
+					for i := range op.Consumes {
+						op.Consumes[i] = strings.TrimSpace(op.Consumes[i])
+					}
+				}
+				if anno.Produce != "" {
+					op.Produces = strings.Split(anno.Produce, ",")
+					for i := range op.Produces {
+						op.Produces[i] = strings.TrimSpace(op.Produces[i])
+					}
+				}
+
 				for _, param := range anno.Params {
-					if param.In == "body" || param.In == "formData" {
+					// Create request body for "body" type OR "@Param body formData TypeName" (struct body)
+					// formData with file type should be individual parameter, not request body
+					isBodyParam := param.In == "body" || (param.In == "formData" && param.Name == "body")
+					if isBodyParam {
 						schemaRef := param.Type
 						if !strings.HasPrefix(schemaRef, "#/") {
 							if strings.HasPrefix(schemaRef, "{") {
@@ -425,10 +460,10 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 						schemaRef = strings.ReplaceAll(schemaRef, "models.", "")
 						schemaRef = strings.ReplaceAll(schemaRef, "util.", "")
 
-						// Determine content-type
 						contentType := "application/json"
-						if param.In == "formData" {
-							contentType = "multipart/form-data"
+						if anno.Accept != "" {
+							// Use content type from @Accept annotation
+							contentType = strings.TrimSpace(anno.Accept)
 						}
 
 						op.RequestBody = &generator.RequestBody{
@@ -442,12 +477,20 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 						}
 						continue
 					}
+					// Detect file type for individual parameters
+					schemaType := param.Type
+					schemaFormat := ""
+					if param.Type == "file" {
+						schemaType = "string"
+						schemaFormat = "binary"
+					}
+
 					pm := generator.Parameter{
 						Name:        param.Name,
 						In:          param.In,
 						Required:    param.Required,
 						Description: param.Description,
-						Schema:      generator.Schema{Type: param.Type},
+						Schema:      generator.Schema{Type: schemaType, Format: schemaFormat},
 					}
 					op.Parameters = append(op.Parameters, pm)
 				}
@@ -511,9 +554,10 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 								op.Summary = anno.Summary
 								op.Description = anno.Description
 								op.Tags = anno.Tags
-								
-								for _, param := range anno.Params {
-									if param.In == "body" || param.In == "formData" {
+
+for _, param := range anno.Params {
+									isBodyParam := param.In == "body" || (param.In == "formData" && param.Name == "body")
+									if isBodyParam {
 										schemaRef := param.Type
 										if !strings.HasPrefix(schemaRef, "#/") {
 											if strings.HasPrefix(schemaRef, "{") {
@@ -523,10 +567,12 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 										}
 										schemaRef = util.CleanRef(schemaRef)
 
-// Determine content-type
-						contentType := "application/json"
-						if param.In == "formData" {
+										contentType := "application/json"
+										if param.In == "formData" {
 											contentType = "multipart/form-data"
+										}
+										if param.In == "formData" && param.Name == "body" && strings.Contains(anno.Accept, "application/x-www-form-urlencoded") {
+											contentType = "application/x-www-form-urlencoded"
 										}
 
 										op.RequestBody = &generator.RequestBody{
