@@ -417,6 +417,15 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 				op.Description = anno.Description
 				op.Tags = anno.Tags
 
+				// Check if any param is formData file
+				hasFormDataFile := false
+				for _, param := range anno.Params {
+					if param.In == "formData" && param.Type == "file" {
+						hasFormDataFile = true
+						break
+					}
+				}
+
 				for _, param := range anno.Params {
 					if param.In == "body" || param.In == "formData" {
 						schemaRef := param.Type
@@ -429,11 +438,18 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 						schemaRef = strings.ReplaceAll(schemaRef, "response.", "")
 						schemaRef = strings.ReplaceAll(schemaRef, "models.", "")
 						schemaRef = strings.ReplaceAll(schemaRef, "util.", "")
+
+						// Determine content-type
+						contentType := "application/json"
+						if param.In == "formData" || hasFormDataFile {
+							contentType = "multipart/form-data"
+						}
+
 						op.RequestBody = &generator.RequestBody{
 							Description: param.Description,
 							Required:    param.Required,
 							Content: map[string]generator.MediaType{
-								"application/json": {
+								contentType: {
 									Schema: generator.Schema{Ref: schemaRef},
 								},
 							},
@@ -514,6 +530,15 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 								op.Description = anno.Description
 								op.Tags = anno.Tags
 
+								// Check if any param is formData file
+								hasFormDataFile := false
+								for _, param := range anno.Params {
+									if param.In == "formData" && param.Type == "file" {
+										hasFormDataFile = true
+										break
+									}
+								}
+
 								for _, param := range anno.Params {
 									if param.In == "body" || param.In == "formData" {
 										schemaRef := param.Type
@@ -526,11 +551,18 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 										schemaRef = strings.ReplaceAll(schemaRef, "response.", "")
 										schemaRef = strings.ReplaceAll(schemaRef, "models.", "")
 										schemaRef = strings.ReplaceAll(schemaRef, "util.", "")
+
+										// Determine content-type
+										contentType := "application/json"
+										if param.In == "formData" || hasFormDataFile {
+											contentType = "multipart/form-data"
+										}
+
 										op.RequestBody = &generator.RequestBody{
 											Description: param.Description,
 											Required:    param.Required,
 											Content: map[string]generator.MediaType{
-												"application/json": {
+												contentType: {
 													Schema: generator.Schema{Ref: schemaRef},
 												},
 											},

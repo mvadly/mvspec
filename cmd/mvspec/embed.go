@@ -306,7 +306,20 @@ func getDefaultIndexHTML() string {
               <button class="add-row-btn" data-editor="headersEditor">+ Add Header</button>
             </div>
             <div class="tab-content hidden" id="bodyTab">
-              <div id="bodyEditor" class="body-editor" placeholder='{ "key": "value" }'></div>
+              <input type="hidden" id="contentTypeSelect" value="form" />
+              <div id="jsonBodyEditor" class="body-editor hidden" placeholder='{ "key": "value" }'></div>
+              <div id="formBodyEditor" class="form-body-editor">
+                <div class="kv-editor" id="formEditor"></div>
+                <button class="add-row-btn" data-editor="formEditor">+ Add Field</button>
+              </div>
+              <div id="formDataEditor" class="form-body-editor hidden">
+                <div class="kv-editor" id="formDataFields"></div>
+                <button class="add-row-btn" data-editor="formDataFields">+ Add Field</button>
+                <div class="file-input-row">
+                  <input type="text" class="kv-key" placeholder="Field name (e.g., file)" />
+                  <input type="file" class="file-input" id="fileInput" />
+                </div>
+              </div>
             </div>
             <div class="tab-content hidden" id="examplesTab">
               <pre id="examplesOutput" class="response-output"></pre>
@@ -518,6 +531,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .body-editor .cm-atom{color:#569CD6}
 .body-editor .cm-bool{color:#569CD6}
 .body-editor .cm-null{color:#569CD6}
+
+.content-type-selector{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.content-type-select{padding:6px 28px 6px 10px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text);font-size:12px;border-radius:var(--radius-sm);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238b9bb4' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+.form-body-editor{margin-top:10px}
+.form-body-editor.hidden{display:none}
+.file-input-row{display:flex;gap:6px;align-items:center;margin-top:10px;padding:8px;background:rgba(15,23,42,.4);border-radius:var(--radius-sm)}
+.file-input{flex:1;padding:6px 10px;background:rgba(15,23,42,.6);border:1px solid var(--glass-border);border-radius:var(--radius-sm);color:var(--text);font-size:12px}
+.file-input::-webkit-file-upload-button{padding:4px 8px;background:var(--glass);border:1px solid var(--glass-border);color:var(--text);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;margin-right:8px}
 
 /* Response Panel */
 .response-panel{flex:1;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);padding:12px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;overflow:hidden;min-height:0}
@@ -845,7 +866,7 @@ func getDefaultAppJS(cfg *config.Config) string {
     // Populate headers
     const headersEditor = $("#headersEditor");
     headersEditor.innerHTML = "";
-    addKVRow(headersEditor, "Content-Type", "application/json");
+    // Content-Type will be set based on body type in sendRequest, don't add here
     if (entry.op.parameters) {
       for (const p of entry.op.parameters) {
         if (p.in === "header") addKVRow(headersEditor, p.name, "");
@@ -854,12 +875,51 @@ func getDefaultAppJS(cfg *config.Config) string {
 
     // Clear body
     setBodyEditorValue("");
+    
+    // Detect content-type from endpoint and set body editors
+    const jsonBodyEditor = document.getElementById('jsonBodyEditor');
+    const formBodyEditor = document.getElementById('formBodyEditor');
+    const formDataEditor = document.getElementById('formDataEditor');
+    const contentTypeInput = document.getElementById('contentTypeSelect');
+    
+    jsonBodyEditor.classList.add('hidden');
+    formBodyEditor.classList.add('hidden');
+    formDataEditor.classList.add('hidden');
+    
+    let detectedType = 'form'; // default
+    
     if (entry.op.requestBody && entry.op.requestBody.content) {
-      const jsonContent = entry.op.requestBody.content["application/json"];
-      if (jsonContent && jsonContent.schema) {
-        setBodyEditorValue(buildExampleBody(jsonContent.schema));
+      const contentKeys = Object.keys(entry.op.requestBody.content);
+      if (contentKeys.includes('application/json')) {
+        detectedType = 'json';
+        jsonBodyEditor.classList.remove('hidden');
+        const jsonContent = entry.op.requestBody.content["application/json"];
+        if (jsonContent && jsonContent.schema) {
+          setBodyEditorValue(buildExampleBody(jsonContent.schema));
+        }
+      } else if (contentKeys.includes('multipart/form-data')) {
+        detectedType = 'form-data';
+        formDataEditor.classList.remove('hidden');
+        const formDataEl = document.getElementById('formDataFields');
+        formDataEl.innerHTML = '';
+        addKVRow(formDataEl, '', '');
+      } else if (contentKeys.includes('application/x-www-form-urlencoded')) {
+        detectedType = 'form';
+        formBodyEditor.classList.remove('hidden');
+        const formEl = document.getElementById('formEditor');
+        formEl.innerHTML = '';
+        addKVRow(formEl, '', '');
       }
+    } else {
+      // No requestBody, show form editor by default
+      formBodyEditor.classList.remove('hidden');
+      const formEl = document.getElementById('formEditor');
+      formEl.innerHTML = '';
+      addKVRow(formEl, '', '');
     }
+    
+    contentTypeInput.value = detectedType;
+    
     if (bodyEditorInstance) {
       bodyEditorInstance.refresh();
     }
@@ -999,14 +1059,52 @@ func getDefaultAppJS(cfg *config.Config) string {
       }
     }
 
+    // Handle body based on content type
+    const contentType = document.getElementById('contentTypeSelect').value;
+    let body = null;
+    
+    if (method !== "GET" && method !== "HEAD") {
+      if (contentType === 'json') {
+        body = substituteEnv(getBodyEditorValue().trim());
+        if (body) headers['Content-Type'] = 'application/json';
+      } else if (contentType === 'form') {
+        const formPairs = getKVPairs('formEditor');
+        const formData = formPairs.filter(p => p.key).map(p => encodeURIComponent(p.key) + "=" + encodeURIComponent(p.value)).join("&");
+        if (formData) {
+          body = formData;
+          headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        }
+      } else if (contentType === 'form-data') {
+        const formData = new FormData();
+        const formPairs = getKVPairs('formDataFields');
+        formPairs.forEach(p => {
+          if (p.key) formData.append(p.key, p.value);
+        });
+        // Add file if selected
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput && fileInput.files.length > 0) {
+          formData.append(fileInput.files[0].name, fileInput.files[0]);
+        }
+        body = formData;
+        delete headers['Content-Type']; // Let browser set multipart boundary
+      }
+    }
+
     // Build curl command
     let curl = "curl -X " + method;
     for (const [key, value] of Object.entries(headers)) {
       curl += " -H \"" + key + ": " + value + "\"";
     }
-    const body = substituteEnv(getBodyEditorValue().trim());
+    let bodyStr = "";
     if (body && method !== "GET" && method !== "HEAD") {
-      curl += " -d '" + body.replace(/'/g, "'\\''") + "'";
+      if (typeof body === 'string') {
+        bodyStr = body;
+      } else if (body instanceof FormData) {
+        for (const [key, value] of body.entries()) {
+          bodyStr += (bodyStr ? "&" : "") + key + "=" + value;
+        }
+      }
+      if (bodyStr) curl += " -d '" + bodyStr.replace(/'/g, "'\\''") + "'";
     }
     curl += " " + finalUrl;
 
@@ -1262,9 +1360,9 @@ func getDefaultAppJS(cfg *config.Config) string {
     }
   });
 
-  // --- Body Editor (CodeMirror) ---
+// --- Body Editor (CodeMirror) ---
   function setupBodyEditor() {
-    const bodyEditorEl = document.getElementById('bodyEditor');
+    const bodyEditorEl = document.getElementById('jsonBodyEditor');
     if (!bodyEditorEl) return;
     
     bodyEditorInstance = CodeMirror(bodyEditorEl, {
@@ -1277,14 +1375,13 @@ func getDefaultAppJS(cfg *config.Config) string {
       styleActiveLine: true,
       matchBrackets: true,
       placeholder: '{ "key": "value" }'
-    });
+});
     
-    // Get value for sending request
     bodyEditorInstance.on('change', function() {
       // Value is automatically available via bodyEditorInstance.getValue()
     });
   }
-  
+
   // Helper to get body editor value
   function getBodyEditorValue() {
     if (bodyEditorInstance) {
