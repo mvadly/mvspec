@@ -205,6 +205,12 @@ func getDefaultIndexHTML() string {
 
     <!-- Main Content -->
     <main class="main">
+      <!-- API Header -->
+      <div class="api-header" id="apiHeader">
+        <h1 class="api-title" id="apiTitle">API Title</h1>
+        <p class="api-description" id="apiDescription">API description</p>
+      </div>
+
       <!-- Request Bar (always top, not affected by toggle) -->
       <div class="request-bar-wrapper">
         <button id="sidebarToggle" class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
@@ -431,6 +437,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 /* Main */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:16px 20px;gap:12px;width:100%;min-width:0}
 
+/* API Header */
+.api-header{padding:0 0 12px;border-bottom:1px solid var(--glass-border);margin-bottom:4px}
+.api-header.hidden{display:none}
+.api-title{font-size:20px;font-weight:700;color:var(--text);margin:0 0 4px}
+.api-description{font-size:13px;color:var(--text-dim);margin:0;line-height:1.4}
+
 /* Request Bar Wrapper */
 .request-bar-wrapper{display:flex;gap:8px;align-items:center;flex-shrink:0;width:100%}
 
@@ -577,15 +589,48 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
   .request-bar-wrapper{flex-wrap:wrap}
   .server-select{min-width:120px}
   .url-input{min-width:100px}
+  .sidebar-toggle,#sidebarToggle{width:36px;height:36px;padding:8px}
+  .send-btn{padding:10px 16px}
+  .main{padding:12px;gap:8px}
 }
 @media(max-width:600px){
   .app{flex-direction:column}
-  .sidebar{width:100%;min-width:100%;max-height:40vh;border-right:none;border-bottom:1px solid var(--glass-border)}
-  .main{flex-direction:column}
+  .sidebar{width:100%;min-width:100%;max-height:35vh;border-right:none;border-bottom:1px solid var(--glass-border)}
+  .main{flex-direction:column;padding:8px;gap:8px}
   .request-bar-wrapper{flex-wrap:wrap;gap:8px}
-  .method-select{min-width:80px}
-  .sidebar-toggle,.layout-toggle{padding:6px 8px}
+  .sidebar-toggle,#sidebarToggle{width:100%;height:40px;padding:8px;order:1}
+  .method-select,.server-select,.url-input,#sendBtn{flex:1 1 100%;min-width:100%;width:100%}
+  .method-select{order:2;flex:0 0 80px}
+  .server-select{order:3}
+  .url-input{order:4}
+  #sendBtn{order:5;justify-content:center;width:100%}
+  .logo{font-size:16px}
+  .sidebar-header{padding:10px 12px}
+  .sidebar-toggle,#sidebarToggle{width:36px;height:36px;padding:8px}
   .sendBtn{padding:8px 16px}
+  .col-response{min-width:100%;max-width:100%}
+  .panels-layout{flex-direction:column}
+  .col-request,.col-response{min-height:200px}
+  .tabs,.response-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .tab{white-space:nowrap;padding:8px 12px;font-size:12px}
+  .request-panel,.response-panel{padding:8px}
+  .auth-input,.kv-key,.kv-value{width:100%;min-width:0}
+  .kv-row{flex-wrap:wrap}
+  .kv-remove{flex-shrink:0}
+  body{font-size:13px}
+  .api-header{padding:0 0 8px;margin-bottom:4px}
+  .api-title{font-size:18px}
+  .api-description{font-size:12px}
+}
+@media(max-width:480px){
+  .main{padding:8px;gap:6px}
+  .panels-layout{gap:6px}
+  .sidebar{width:100%;min-width:100%;max-height:30vh}
+  .method-select{order:2;flex:0 0 70px}
+  .send-btn{padding:10px 16px}
+  .endpoint{padding:6px 8px 6px 12px;font-size:12px}
+  .tag-name{font-size:11px}
+  .modal{width:95%;max-width:none;margin:10px}
 }`
 }
 
@@ -655,14 +700,30 @@ func getDefaultAppJS(cfg *config.Config) string {
 
   // --- Load OpenAPI Spec ---
   function loadSpec() {
+    const apiHeader = document.getElementById('apiHeader');
+    const apiTitle = document.getElementById('apiTitle');
+    const apiDescription = document.getElementById('apiDescription');
+    
     fetch("mv-spec.json")
       .then((r) => r.json())
       .then((data) => { 
         spec = data; 
+        
+        // Populate API header
+        if (spec.info) {
+          apiTitle.textContent = spec.info.title || 'API';
+          apiDescription.textContent = spec.info.description || '';
+          apiDescription.style.display = spec.info.description ? 'block' : 'none';
+          apiHeader.classList.remove('hidden');
+        } else {
+          apiHeader.classList.add('hidden');
+        }
+        
         renderCollections(); 
         renderServerDropdown();
       })
       .catch(() => {
+        document.getElementById('apiHeader').classList.add('hidden');
         collectionsEl.innerHTML = '<p style="padding:12px;color:var(--text-dim);font-size:12px">Could not load mv-spec.json</p>';
       });
   }
