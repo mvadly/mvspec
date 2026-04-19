@@ -38,6 +38,7 @@ type Field struct {
 	Name    string
 	Type    string
 	JSONTag string
+	FormTag string
 }
 
 type Annotation struct {
@@ -308,11 +309,26 @@ func (p *Parser) parseTypes() error {
 					fieldName := field.Names[0].Name
 					typeName := typeToString(field.Type)
 					jsonTag := strings.ToLower(fieldName)
+					
+					// Extract form tag from struct tag
+					formTag := ""
+					if field.Tag != nil {
+						tagStr := field.Tag.Value
+						// Parse form:"tagname" from tag string
+						re := regexp.MustCompile(`form:"([^"]+)"`)
+						matches := re.FindStringSubmatch(tagStr)
+						if len(matches) > 1 {
+							formTag = matches[1]
+							// Handle array notation like "img_business_file[]"
+							formTag = strings.TrimSuffix(formTag, "[]")
+						}
+					}
 
 					info.Fields = append(info.Fields, Field{
 						Name:    fieldName,
 						Type:    typeName,
 						JSONTag: jsonTag,
+						FormTag: formTag,
 					})
 				}
 
@@ -623,7 +639,26 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 			prop := generator.Schema{
 				Type: inferJSONType(f.Type),
 			}
+			// Detect file type
+			if strings.Contains(f.Type, "multipart.FileHeader") || f.Type == "file" {
+				prop.Format = "binary"
+				prop.Type = "string"
+			}
+			// Always add with JSON tag (for JSON content-type)
 			schema.Properties[f.JSONTag] = prop
+			// Add with form tag if different (for form-data content-type)
+			if f.FormTag != "" && f.FormTag != f.JSONTag {
+				formProp := generator.Schema{
+					Type:   inferJSONType(f.Type),
+					Format: prop.Format,
+				}
+				// Use type: string, format: binary for file fields in form-data
+				if strings.Contains(f.Type, "multipart.FileHeader") || f.Type == "file" {
+					formProp.Format = "binary"
+					formProp.Type = "string"
+				}
+				schema.Properties[f.FormTag] = formProp
+			}
 		}
 
 		spec.Components.Schemas[name] = schema
