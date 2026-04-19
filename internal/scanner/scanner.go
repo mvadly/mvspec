@@ -1,11 +1,5 @@
 package scanner
 
-import (
-	"os"
-	"path/filepath"
-	"strings"
-)
-
 type FileScanner struct {
 	Exclude []string
 	Files   map[string]*FileInfo
@@ -29,33 +23,11 @@ func (s *FileScanner) Scan(dir string) error {
 		excludeMap[e] = true
 	}
 
-	var walkDir func(dir string) error
-	walkDir = func(dir string) error {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return nil
+	WalkDir(dir, excludeMap, func(path, name string) {
+		s.Files[path] = &FileInfo{
+			Path: path,
+			Name: name,
 		}
-
-		for _, entry := range entries {
-			name := entry.Name()
-			path := filepath.Join(dir, name)
-
-			if excludeMap[name] || strings.HasPrefix(name, ".") {
-				continue
-			}
-
-			if entry.IsDir() {
-				walkDir(path)
-				continue
-			}
-
-			s.Files[path] = &FileInfo{
-				Path: path,
-				Name: name,
-			}
-		}
-		return nil
-	}
-
-	return walkDir(dir)
+	})
+	return nil
 }

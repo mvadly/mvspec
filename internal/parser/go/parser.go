@@ -6,12 +6,13 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"regexp"
 	"strings"
 
 	"github.com/mvadly/mvspec/internal/config"
 	"github.com/mvadly/mvspec/internal/generator"
+	"github.com/mvadly/mvspec/internal/scanner"
+	"github.com/mvadly/mvspec/internal/util"
 )
 
 type Parser struct {
@@ -114,43 +115,21 @@ func (p *Parser) scanFiles() error {
 		excludeMap[e] = true
 	}
 
-	var walkDir func(dir string) error
-	walkDir = func(dir string) error {
-		entries, err := os.ReadDir(dir)
+	scanner.WalkDir(".", excludeMap, func(path, name string) {
+		if !strings.HasSuffix(name, ".go") {
+			return
+		}
+		if strings.HasSuffix(name, "_test.go") {
+			return
+		}
+
+		f, err := parser.ParseFile(&p.fset, path, nil, parser.ParseComments)
 		if err != nil {
-			return nil
+			return
 		}
-
-		for _, entry := range entries {
-			name := entry.Name()
-			path := dir + "/" + name
-
-			if excludeMap[name] || strings.HasPrefix(name, ".") {
-				continue
-			}
-
-			if entry.IsDir() {
-				walkDir(path)
-				continue
-			}
-
-			if !strings.HasSuffix(name, ".go") {
-				continue
-			}
-			if strings.HasSuffix(name, "_test.go") {
-				continue
-			}
-
-			f, err := parser.ParseFile(&p.fset, path, nil, parser.ParseComments)
-			if err != nil {
-				continue
-			}
-			p.files[path] = f
-		}
-		return nil
-	}
-
-	return walkDir(".")
+		p.files[path] = f
+	})
+	return nil
 }
 
 func (p *Parser) parseRoutes() error {
@@ -391,7 +370,7 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 			}
 
 			if !matched && o.Annotation.Router != "" {
-				routerPath := extractPathFromRouter(o.Annotation.Router)
+				routerPath := util.ExtractPathFromRouter(o.Annotation.Router)
 				if routerPath == fullPath {
 					matched = true
 					anno = o.Annotation
@@ -399,17 +378,17 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 			}
 
 			if !matched {
-				routeMethod := extractMethodFromHandler(route.Handler)
-				if routeMethod != "" && containsIgnoreCase(o.Handler, routeMethod) {
+				routeMethod := util.ExtractMethodFromHandler(route.Handler)
+				if routeMethod != "" && util.ContainsIgnoreCase(o.Handler, routeMethod) {
 					matched = true
 					anno = o.Annotation
 				}
 			}
 
 			if !matched && o.Annotation.Router != "" {
-				routeMethod := extractMethodFromHandler(route.Handler)
-				if routeMethod != "" && containsIgnoreCase(o.Handler, routeMethod) {
-					routerPath := extractPathFromRouter(o.Annotation.Router)
+				routeMethod := util.ExtractMethodFromHandler(route.Handler)
+				if routeMethod != "" && util.ContainsIgnoreCase(o.Handler, routeMethod) {
+					routerPath := util.ExtractPathFromRouter(o.Annotation.Router)
 					if routerPath == fullPath {
 						matched = true
 						anno = o.Annotation
@@ -418,9 +397,9 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 			}
 
 			if !matched && o.Annotation.Router != "" {
-				routeMethod := extractMethodFromHandler(route.Handler)
-				if routeMethod != "" && containsIgnoreCase(o.Handler, routeMethod) {
-					routerPath := extractPathFromRouter(o.Annotation.Router)
+				routeMethod := util.ExtractMethodFromHandler(route.Handler)
+				if routeMethod != "" && util.ContainsIgnoreCase(o.Handler, routeMethod) {
+					routerPath := util.ExtractPathFromRouter(o.Annotation.Router)
 					if routerPath == fullPath {
 						matched = true
 						anno = o.Annotation
@@ -475,9 +454,7 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 
 				for _, succ := range anno.Success {
 					respRef := succ.Type
-					respRef = strings.ReplaceAll(respRef, "response.", "")
-					respRef = strings.ReplaceAll(respRef, "models.", "")
-					respRef = strings.ReplaceAll(respRef, "util.", "")
+					respRef = util.CleanRef(respRef)
 					resp := generator.Response{
 						Description: succ.Description,
 						Content: map[string]generator.MediaType{
@@ -485,8 +462,8 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 								Schema: generator.Schema{Ref: respRef},
 							},
 						},
-						Example:        parseJSONExample(succ.Example),
-						RequestExample: parseJSONExample(succ.RequestExample),
+						Example:        util.ParseJSONExample(succ.Example),
+						RequestExample: util.ParseJSONExample(succ.RequestExample),
 					}
 					if op.Responses == nil {
 						op.Responses = make(map[string]generator.Response)
@@ -496,9 +473,7 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 
 				for _, fail := range anno.Failure {
 					respRef := fail.Type
-					respRef = strings.ReplaceAll(respRef, "response.", "")
-					respRef = strings.ReplaceAll(respRef, "models.", "")
-					respRef = strings.ReplaceAll(respRef, "util.", "")
+					respRef = util.CleanRef(respRef)
 					resp := generator.Response{
 						Description: fail.Description,
 						Content: map[string]generator.MediaType{
@@ -506,8 +481,8 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 								Schema: generator.Schema{Ref: respRef},
 							},
 						},
-						Example:        parseJSONExample(fail.Example),
-						RequestExample: parseJSONExample(fail.RequestExample),
+						Example:        util.ParseJSONExample(fail.Example),
+						RequestExample: util.ParseJSONExample(fail.RequestExample),
 					}
 					if op.Responses == nil {
 						op.Responses = make(map[string]generator.Response)
@@ -546,9 +521,7 @@ func (p *Parser) generateSpec() *generator.OpenAPISpec {
 											}
 											schemaRef = "#/components/schemas/" + schemaRef
 										}
-										schemaRef = strings.ReplaceAll(schemaRef, "response.", "")
-										schemaRef = strings.ReplaceAll(schemaRef, "models.", "")
-										schemaRef = strings.ReplaceAll(schemaRef, "util.", "")
+										schemaRef = util.CleanRef(schemaRef)
 
 // Determine content-type
 						contentType := "application/json"

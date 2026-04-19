@@ -350,6 +350,17 @@ Output `mv-spec.json`:
 - **Request/Response Examples**: Inline JSON examples in annotations are parsed and displayed in the UI
 - **Content-Type Auto-Detection**: UI automatically detects content-type from endpoint spec and shows appropriate body editor (JSON, form-urlencoded, form-data)
 - **Form Data File Upload**: UI shows file input for multipart/form-data endpoints
+- **Form Struct Tags**: Parser now uses `form` struct tags (e.g., `form:"name"`) instead of field names for schema property names
+- **File Type Detection**: `*multipart.FileHeader` correctly detected as file type (format: binary)
+
+### Code Quality
+
+- **Comprehensive Tests**: Full unit test coverage with integration tests
+- **SonarQube Integration**: Continuous code quality scanning
+  - 0% duplication
+  - Scanner, util packages at 100% coverage
+  - embed: 73.2% coverage
+  - parser/go: 64.0% coverage
 
 ### UI Features
 

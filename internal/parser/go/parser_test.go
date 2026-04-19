@@ -2,6 +2,7 @@ package goparser
 
 import (
 	"go/ast"
+	"go/parser"
 	"go/token"
 	"os"
 	"path/filepath"
@@ -608,4 +609,388 @@ func TestWriteGenerator(t *testing.T) {
 		t.Error("Output file was not created")
 	}
 	os.Remove(tmpFile)
+}
+
+func TestTypeToString(t *testing.T) {
+	tests := []struct {
+		name string
+		code string
+	}{
+		{"string type", "string"},
+		{"int type", "int"},
+		{"pointer to string", "*string"},
+		{"slice of string", "[]string"},
+		{"map type", "map[string]int"},
+		{"interface type", "interface{}"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fset := token.NewFileSet()
+			f, err := parser.ParseFile(fset, "test.go", "package main\ntype T "+tt.code, 0)
+			if err != nil {
+				t.Skipf("Skipping: cannot parse code")
+			}
+
+			var typeSpec *ast.TypeSpec
+			for _, d := range f.Decls {
+				if gd, ok := d.(*ast.GenDecl); ok && len(gd.Specs) > 0 {
+					if ts, ok := gd.Specs[0].(*ast.TypeSpec); ok {
+						typeSpec = ts
+						break
+					}
+				}
+			}
+			if typeSpec == nil {
+				t.Skipf("No type spec found")
+			}
+
+			result := typeToString(typeSpec.Type)
+			if len(result) == 0 {
+				t.Error("expected non-empty result")
+			}
+		})
+	}
+}
+
+func TestGenerateFullSpec(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	goFile := filepath.Join(tmpDir, "main.go")
+	err := os.WriteFile(goFile, []byte(`
+package main
+
+// @Summary Get users
+// @Description Get all users
+// @Tags User
+// @Accept json
+// @Produce json
+// @Param body formData LoginForm true "Login form"
+// @Success 200 {object} Response
+// @Router /users [get]
+func GetUsers() type
+
+type LoginForm struct {
+	Username string `+"`form:\"username\"`"+`
+	Password string `+"`form:\"password\"`"+`
+}
+
+type Response struct {
+	Code string
+	Data string
+}
+`), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile error: %v", err)
+	}
+
+	cfg := &config.Config{
+		Title:       "Full Test API",
+		Version:     "2.0.0",
+		Output:      "full_test.json",
+		ParseTypes:  true,
+		Exclude:    []string{},
+		Servers:    []config.ServerConfig{{URL: "http://localhost:8080"}},
+	}
+
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origWd)
+
+	err = Generate(cfg)
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	if _, err := os.Stat(cfg.Output); os.IsNotExist(err) {
+		t.Error("Output file was not created")
+	}
+
+	os.Remove(cfg.Output)
+}
+
+func TestGenerateWithHost(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	goFile := filepath.Join(tmpDir, "main.go")
+	os.WriteFile(goFile, []byte(`package main`), 0644)
+
+	cfg := &config.Config{
+		Title:       "Host Test API",
+		Version:     "1.0.0",
+		Output:      "host_test.json",
+		Host:        "localhost:8080",
+		BasePath:    "/api",
+		ParseTypes:  false,
+	}
+
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origWd)
+
+	err := Generate(cfg)
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	os.Remove(cfg.Output)
+}
+
+func TestGenerateWithSecurity(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	goFile := filepath.Join(tmpDir, "main.go")
+	err := os.WriteFile(goFile, []byte(`
+package main
+
+// @Summary Get users
+// @Security ApiKeyAuth
+// @Router /users [get]
+func GetUsers() {}
+
+// @Summary Create user
+// @Security OAuth2Implicit
+// @Router /users [post]
+func CreateUser() {}
+`), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile error: %v", err)
+	}
+
+	cfg := &config.Config{
+		Title:       "Security Test API",
+		Version:     "1.0.0",
+		Output:      "security_test.json",
+		ParseTypes:  false,
+	}
+
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origWd)
+
+	err = Generate(cfg)
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	os.Remove(cfg.Output)
+}
+
+func TestParseRoutesWithGinRouter(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	goFile := filepath.Join(tmpDir, "router.go")
+	err := os.WriteFile(goFile, []byte(`
+package main
+
+import "github.com/gin-gonic/gin"
+
+func GetUsers() {}
+func CreateUser() {}
+func UpdateUser() {}
+func DeleteUser() {}
+func GetItems() {}
+
+func main() {
+	r := gin.Default()
+	r.GET("/users", GetUsers)
+	r.GET("/items", GetItems)
+	r.POST("/users", CreateUser)
+	r.PUT("/users/:id", UpdateUser)
+	r.DELETE("/users/:id", DeleteUser)
+	api := r.Group("/api")
+	api.GET("/users", GetUsers)
+}
+`), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile error: %v", err)
+	}
+
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origWd)
+
+	p := &Parser{
+		cfg:    &config.Config{Exclude: []string{}},
+		fset:   *token.NewFileSet(),
+		files:  make(map[string]*ast.File),
+		routes: []Route{},
+	}
+
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, goFile, nil, parser.ParseComments)
+	if err != nil {
+		t.Skipf("Skipping: cannot parse file: %v", err)
+	}
+	p.files[goFile] = f
+
+	err = p.parseRoutes()
+	if err != nil {
+		t.Errorf("parseRoutes() error = %v", err)
+	}
+
+	t.Logf("Found %d routes", len(p.routes))
+}
+
+func TestParseAnnotationsIntegration(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	goFile := filepath.Join(tmpDir, "handlers.go")
+	err := os.WriteFile(goFile, []byte(`
+package main
+
+// @Summary Get all users
+// @Description Returns users list
+// @Tags User,Admin
+// @Param id path int true "User ID"
+// @Success 200 {object} User
+// @Security ApiKeyAuth
+// @Router /users [get]
+func GetUsers() {}
+
+// @Summary Create user
+// @Tags User
+// @Param body body CreateUserRequest true "User"
+// @Success 201 {object} User
+// @Router /users [post]
+func CreateUser() {}
+`), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile error: %v", err)
+	}
+
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origWd)
+
+	p := &Parser{
+		cfg:    &config.Config{Exclude: []string{}},
+		fset:   *token.NewFileSet(),
+		files:  make(map[string]*ast.File),
+		operas: []Operation{},
+	}
+
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, goFile, nil, parser.ParseComments)
+	if err != nil {
+		t.Skipf("Skipping: cannot parse file: %v", err)
+	}
+	p.files[goFile] = f
+
+	err = p.parseAnnotations()
+	if err != nil {
+		t.Errorf("parseAnnotations() error = %v", err)
+	}
+
+	t.Logf("Found %d operations", len(p.operas))
+}
+
+func TestParseTypesIntegration(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	goFile := filepath.Join(tmpDir, "types.go")
+	err := os.WriteFile(goFile, []byte(`
+package main
+
+import "mime/multipart"
+
+type User struct {
+	ID     int    `+"`json:\"id\"`"+`
+	Name   string `+"`json:\"name\"`"+`
+	Email  string `+"`json:\"email\"`"+`
+	Avatar *multipart.FileHeader `+"`form:\"avatar\"`"+`
+	Tags   []string `+"`json:\"tags\"`"+`
+}
+
+type CreateUserRequest struct {
+	Name string `+"`form:\"name\"`"+`
+}
+`), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile error: %v", err)
+	}
+
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origWd)
+
+	p := &Parser{
+		cfg:    &config.Config{Exclude: []string{}},
+		fset:   *token.NewFileSet(),
+		files:  make(map[string]*ast.File),
+		types: make(map[string]*TypeInfo),
+	}
+
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, goFile, nil, parser.ParseComments)
+	if err != nil {
+		t.Skipf("Skipping: cannot parse file: %v", err)
+	}
+	p.files[goFile] = f
+
+	err = p.parseTypes()
+	if err != nil {
+		t.Errorf("parseTypes() error = %v", err)
+	}
+
+	t.Logf("Found %d types", len(p.types))
+}
+
+func TestGenerateFullAPI(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	goFile := filepath.Join(tmpDir, "main.go")
+	err := os.WriteFile(goFile, []byte(`
+package main
+
+import "mime/multipart"
+
+// @Summary Get users
+// @Tags User
+// @Success 200 {object} UserList
+// @Router /users [get]
+func GetUsers() {}
+
+// @Summary Create user
+// @Tags User
+// @Param body formData CreateUserRequest true "User"
+// @Success 201 {object} User
+// @Router /users [post]
+func CreateUser() {}
+
+type User struct {
+	ID   int    `+"`json:\"id\"`"+`
+	Name string `+"`json:\"name\"`"+`
+}
+
+type CreateUserRequest struct {
+	Name string `+"`form:\"name\"`"+`
+}
+
+type UserList struct {
+	Data []User `+"`json:\"data\"`"+`
+}
+`), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile error: %v", err)
+	}
+
+	cfg := &config.Config{
+		Title:       "Test API",
+		Version:     "1.0.0",
+		Output:     "test.json",
+		ParseTypes: true,
+		Servers:    []config.ServerConfig{{URL: "http://localhost:8080"}},
+	}
+
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origWd)
+
+	err = Generate(cfg)
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	os.Remove(cfg.Output)
 }
