@@ -914,19 +914,16 @@ func getDefaultAppJS(cfg *config.Config) string {
             const refName = schemaRef.$ref.split('/').pop();
             const schema = spec.components && spec.components.schemas && spec.components.schemas[refName];
             if (schema && schema.properties) {
-              // Check for file inputs (format: binary) and update file input field name
-              let fileFieldName = '';
+              // Check for file inputs (format: binary) and create file input rows for each
               for (const [propName, propSchema] of Object.entries(schema.properties)) {
                 const isFile = propSchema.format === 'binary' || propSchema.type === 'file';
-                if (isFile && !fileFieldName) {
-                  // First file field found - set the file input to use this name
-                  fileFieldName = propName;
-                  const fileInputRow = formDataEditor.querySelector('.file-input-row');
-                  if (fileInputRow) {
-                    const fileInputKey = fileInputRow.querySelector('.kv-key');
-                    if (fileInputKey) fileInputKey.value = propName;
-                  }
-                  continue; // Skip adding kv-row for file fields
+                if (isFile) {
+                  // Create file input row for this file field
+                  const fileInputRow = document.createElement('div');
+                  fileInputRow.className = 'file-input-row';
+                  fileInputRow.innerHTML = '<input type="text" class="kv-key" placeholder="Field name" value="' + propName + '"><input type="file" class="file-input" />';
+                  formDataEl.parentNode.insertBefore(fileInputRow, formDataEl.nextSibling);
+                  continue;
                 }
                 addKVRow(formDataEl, propName, '');
               }

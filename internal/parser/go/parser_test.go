@@ -220,3 +220,31 @@ func TestParseParamHeader(t *testing.T) {
 		})
 	}
 }
+
+func TestInferJSONType(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"string", "string"},
+		{"int", "integer"},
+		{"int64", "integer"},
+		{"bool", "boolean"},
+		{"float64", "number"},
+		{"file", "string"},
+		{"*os.File", "string"},
+		{"array", "object"},
+		{"FileHeader", "string"},
+		{"multipart.FileHeader", "string"},
+		{"object", "object"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := inferJSONType(tt.input)
+			if result != tt.expected {
+				t.Errorf("inferJSONType(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
