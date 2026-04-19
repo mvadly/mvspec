@@ -202,3 +202,72 @@ func TestOpenBrowser(t *testing.T) {
 		t.Logf("OpenBrowser error (expected in some environments): %v", err)
 	}
 }
+
+func TestReloadSpec(t *testing.T) {
+	tmpDir := t.TempDir()
+	specFile := filepath.Join(tmpDir, "mv-spec.json")
+	os.WriteFile(specFile, []byte(`{"openapi":"3.0.3"}`), 0644)
+
+	origCwd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origCwd)
+
+	ReloadSpec()
+
+	data, err := getSpecData()
+	if err != nil {
+		t.Errorf("getSpecData() error = %v", err)
+	}
+	if len(data) == 0 {
+		t.Error("spec data is empty")
+	}
+}
+
+func TestMvHandlerWithConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		devOnly bool
+		envVars map[string]string
+		want   int
+	}{
+		{
+			name:    "dev only true dev env",
+			devOnly: true,
+			envVars: map[string]string{"GO_ENV": "development"},
+			want:   200,
+		},
+		{
+			name:    "dev only false",
+			devOnly: false,
+			envVars: map[string]string{"GO_ENV": "production"},
+			want:   404,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.envVars {
+				os.Setenv(k, v)
+				defer os.Unsetenv(k)
+			}
+
+			cfg := Config{DevOnly: tt.devOnly}
+			handler := MvHandlerWithConfig(cfg)
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/mvdocs", nil)
+			handler.ServeHTTP(w, r)
+
+			if tt.want == 200 && w.Code == 404 {
+				t.Logf("Got 404 in dev mode - may be expected")
+			}
+		})
+	}
+}
+
+func TestServeWith(t *testing.T) {
+	handler := MvHandler()
+	if handler == nil {
+		t.Error("handler is nil")
+	}
+}

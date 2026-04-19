@@ -68,6 +68,38 @@ func TestWrite(t *testing.T) {
 			wantErr:   false,
 			checkFile: true,
 		},
+		{
+			name: "with servers",
+			spec: &OpenAPISpec{
+				OpenAPI: "3.0.3",
+				Info: Info{Title: "Test", Version: "1.0"},
+				Paths: map[string]map[string]Operation{},
+				Servers: []Server{
+					{URL: "http://localhost:8080", Description: "Local"},
+				},
+			},
+			wantErr:   false,
+			checkFile: true,
+		},
+		{
+			name: "with security schemes",
+			spec: &OpenAPISpec{
+				OpenAPI: "3.0.3",
+				Info: Info{Title: "Test", Version: "1.0"},
+				Paths: map[string]map[string]Operation{},
+				Components: Components{
+					SecuritySchemes: map[string]SecurityScheme{
+						"bearerAuth": {
+							Type:         "http",
+							Scheme:       "bearer",
+							BearerFormat: "JWT",
+						},
+					},
+				},
+			},
+			wantErr:   false,
+			checkFile: true,
+		},
 	}
 
 	for _, tt := range tests {

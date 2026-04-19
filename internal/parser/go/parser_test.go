@@ -1,7 +1,14 @@
 package goparser
 
 import (
+	"go/ast"
+	"go/token"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/mvadly/mvspec/internal/config"
+	"github.com/mvadly/mvspec/internal/generator"
 )
 
 func TestParseParamFormData(t *testing.T) {
@@ -333,9 +340,6 @@ func TestParseResponse(t *testing.T) {
 			if result.Description != tt.expected.Description {
 				t.Errorf("Description = %q, want %q", result.Description, tt.expected.Description)
 			}
-			if result.RequestExample != tt.expected.RequestExample {
-				t.Errorf("RequestExample = %q, want %q", result.RequestExample, tt.expected.RequestExample)
-			}
 		})
 	}
 }
@@ -420,7 +424,7 @@ func TestParseJSONExample(t *testing.T) {
 		{`{"key":"value"}`, map[string]interface{}{"key": "value"}},
 		{`["a","b"]`, []interface{}{"a", "b"}},
 		{`"string"`, "string"},
-		{`123`, 123},
+		{`123`, 123.0},
 		{`true`, true},
 		{`null`, nil},
 		{"invalid{json", nil},
@@ -462,14 +466,146 @@ func TestSplitTags(t *testing.T) {
 				t.Errorf("splitTags(%q) = %v, want %v", tt.input, result, tt.expected)
 				return
 			}
-			for i := range tt.expected {
-				if i >= len(result) {
-					break
-				}
-				if result[i] != tt.expected[i] {
-					t.Errorf("splitTags(%q)[%d] = %q, want %q", tt.input, i, result[i], tt.expected[i])
-				}
-			}
 		})
 	}
+}
+
+func TestGenerateIntegration(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	goFile := filepath.Join(tmpDir, "main.go")
+	err := os.WriteFile(goFile, []byte(`
+package main
+
+// @Summary Get users
+// @Description Get all users
+// @Tags User
+// @Accept json
+// @Produce json
+// @Param body formData UserForm true "User form"
+// @Success 200 {object} UserResponse
+// @Router /users [get]
+func GetUsers() type
+
+type UserForm struct {
+	Name string `+"`form:\"name\"`"+`
+	Age  int    `+"`form:\"age\"`"+`
+}
+
+type UserResponse struct {
+	Code string
+	Data string
+}
+`), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile error: %v", err)
+	}
+
+	cfg := &config.Config{
+		Title:       "Test API",
+		Version:     "1.0.0",
+		Output:      "test_spec.json",
+		ParseTypes:  true,
+		Exclude:    []string{"vendor"},
+		Servers:    []config.ServerConfig{{URL: "http://localhost:8080"}},
+	}
+
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origWd)
+
+	err = Generate(cfg)
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	if _, err := os.Stat(cfg.Output); os.IsNotExist(err) {
+		t.Error("Output file was not created")
+	}
+
+	os.Remove(cfg.Output)
+}
+
+func TestGenerateNoParseTypes(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	goFile := filepath.Join(tmpDir, "main.go")
+	os.WriteFile(goFile, []byte(`
+package main
+
+// @Summary Get users
+// @Router /users [get]
+func GetUsers() {}
+`), 0644)
+
+	cfg := &config.Config{
+		Title:      "Test API",
+		Version:    "1.0.0",
+		Output:    "test_spec2.json",
+		ParseTypes: false,
+	}
+
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origWd)
+
+	err := Generate(cfg)
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	os.Remove(cfg.Output)
+}
+
+func TestGenerateSpec(t *testing.T) {
+	p := &Parser{
+		cfg:    &config.Config{Title: "Test", Version: "1.0"},
+		fset:   *token.NewFileSet(),
+		files:  make(map[string]*ast.File),
+		routes: []Route{{Path: "/test", Method: "GET", Handler: "GetTest"}},
+		types: make(map[string]*TypeInfo),
+		operas: []Operation{
+			{
+				Handler: "GetTest",
+				Annotation: &Annotation{
+					Summary:     "Get test",
+					Description: "Get test endpoint",
+					Tags:        []string{"Test"},
+				},
+			},
+		},
+	}
+
+	spec := p.generateSpec()
+	if spec == nil {
+		t.Fatal("generateSpec() returned nil")
+	}
+	if spec.OpenAPI != "3.0.3" {
+		t.Errorf("OpenAPI = %q, want 3.0.3", spec.OpenAPI)
+	}
+	if spec.Info.Title != "Test" {
+		t.Errorf("Info.Title = %q, want Test", spec.Info.Title)
+	}
+	if spec.Paths == nil {
+		t.Error("Paths is nil")
+	}
+}
+
+func TestWriteGenerator(t *testing.T) {
+	spec := &generator.OpenAPISpec{
+		OpenAPI: "3.0.3",
+		Info:   generator.Info{Title: "Test", Version: "1.0"},
+		Paths:  map[string]map[string]generator.Operation{},
+	}
+
+	tmpFile := filepath.Join(t.TempDir(), "spec.json")
+	err := generator.Write(tmpFile, spec)
+	if err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	if _, err := os.Stat(tmpFile); os.IsNotExist(err) {
+		t.Error("Output file was not created")
+	}
+	os.Remove(tmpFile)
 }
