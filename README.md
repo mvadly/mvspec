@@ -18,6 +18,14 @@ go build -o mvspec ./cmd/mvspec
 
 ## Usage
 
+### Create config template
+
+```bash
+mvspec init
+```
+
+This creates `mvspec.yaml` in current directory.
+
 ### Generate API spec
 
 ```bash
@@ -31,15 +39,11 @@ mvspec --lang go
 mvspec --lang js
 ```
 
-### Create config template
+### Generate embedded docs handler and UI
 
 ```bash
-mvspec init
+mvspec embed
 ```
-
-This creates `mvspec.yaml` in current directory.
-
-### Other commands
 
 ```bash
 mvspec version    # Print version
