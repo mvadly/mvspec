@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	version = "dev"
+	version = "v1.0.4"
 
 	lang       string
 	output     string
